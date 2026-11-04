@@ -1,0 +1,11 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+node_modules/
+dist/
+release/
+.browser-profile/
+output/*
+!output/.gitkeep
+.DS_Store

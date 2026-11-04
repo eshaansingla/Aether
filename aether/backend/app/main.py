@@ -15,7 +15,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AETHER Local AI Assistant", version="2.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=[ALLOWED_ORIGIN,"http://127.0.0.1:5173"],
-                   allow_credentials=True, allow_methods=["GET","POST"], allow_headers=["*"])
+                   allow_credentials=True, allow_methods=["GET","POST","PUT","PATCH","DELETE"], allow_headers=["*"])
 @app.get("/health")
 async def health():
     return {"status":"online","application":"AETHER","version":"2.0.0","mode":"local"}

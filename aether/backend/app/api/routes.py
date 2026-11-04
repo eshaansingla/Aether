@@ -1,14 +1,20 @@
 import asyncio, tempfile
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from app.models import ChatRequest
+from app.models import ChatRequest, NoteCreate, NoteUpdate, ReminderCreate, ReminderUpdate
 from app.core.runner import create_and_run, TASKS
 from app.core.database import get_task, list_tasks
-from app.tools.productivity import list_notes, list_reminders
+from app.tools.productivity import (
+    list_notes, list_reminders, create_note, get_note, update_note, delete_note,
+    create_reminder, update_reminder, delete_reminder,
+)
 from app.services.agent import agent
+from app.tools.attachments import extract_text
+from app.tools.files import read_document_text, write_document_text
 from app.config import OLLAMA_MODEL, WHISPER_MODEL
 
 router = APIRouter(prefix="/api")
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 
 _whisper_model = None
 
@@ -24,7 +30,19 @@ def get_whisper_model():
 @router.post("/tasks")
 async def create_task(request: ChatRequest):
     history = [{"role": h.role, "content": h.content} for h in request.history]
-    return await create_and_run(request.message.strip(), history)
+    attachments = [{"name": a.name, "text": a.text} for a in request.attachments]
+    return await create_and_run(request.message.strip(), history, attachments)
+
+@router.post("/attachments")
+async def upload_attachment(file: UploadFile = File(...)):
+    data = await file.read()
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File is too large (8 MB limit).")
+    try:
+        text, truncated = extract_text(file.filename or "file", data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    return {"name": file.filename or "file", "text": text, "truncated": truncated}
 
 @router.get("/tasks/{task_id}")
 async def task_status(task_id: str):
@@ -40,9 +58,77 @@ async def recent_tasks():
 async def notes():
     return list_notes()
 
+@router.post("/notes")
+async def new_note(body: NoteCreate):
+    return create_note(body.content, body.title)
+
+@router.get("/notes/{name}")
+async def read_note(name: str):
+    try:
+        return get_note(name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Note not found.")
+
+@router.put("/notes/{name}")
+async def edit_note(name: str, body: NoteUpdate):
+    try:
+        return update_note(name, body.content)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Note not found.")
+
+@router.delete("/notes/{name}")
+async def remove_note(name: str):
+    try:
+        delete_note(name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Note not found.")
+    return {"deleted": name}
+
 @router.get("/reminders")
 async def reminders():
     return list_reminders()
+
+@router.post("/reminders")
+async def new_reminder(body: ReminderCreate):
+    try:
+        return create_reminder(body.message, body.minutes)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@router.patch("/reminders/{reminder_id}")
+async def edit_reminder(reminder_id: str, body: ReminderUpdate):
+    try:
+        return update_reminder(reminder_id, **body.model_dump(exclude_unset=True))
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Reminder not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@router.delete("/reminders/{reminder_id}")
+async def remove_reminder(reminder_id: str):
+    try:
+        delete_reminder(reminder_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Reminder not found.")
+    return {"deleted": reminder_id}
+
+@router.get("/documents/{name}")
+async def read_document(name: str):
+    try:
+        return {"name": name, "text": read_document_text(name)}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@router.put("/documents/{name}")
+async def edit_document(name: str, body: NoteUpdate):
+    try:
+        return write_document_text(name, body.content)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @router.get("/status")
 async def local_status():

@@ -1,8 +1,8 @@
 import asyncio, tempfile
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from app.models import ChatRequest, NoteCreate, NoteUpdate, ReminderCreate, ReminderUpdate
-from app.core.runner import create_and_run, TASKS
+from app.models import ChatRequest, NoteCreate, NoteUpdate, ReminderCreate, ReminderUpdate, VariantSelect
+from app.core.runner import create_and_run, TASKS, select_variant
 from app.core.database import get_task, list_tasks
 from app.tools.productivity import (
     list_notes, list_reminders, create_note, get_note, update_note, delete_note,
@@ -11,7 +11,9 @@ from app.tools.productivity import (
 from app.services.agent import agent
 from app.tools.attachments import extract_text
 from app.tools.files import read_document_text, write_document_text
-from app.config import OLLAMA_MODEL, WHISPER_MODEL
+from app.tools.knowledge import looks_factual, wikipedia_summary
+from app.core.variants import generate_all_variants
+from app.config import AI_MODEL, AI_PROVIDER, WHISPER_MODEL
 
 router = APIRouter(prefix="/api")
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
@@ -32,6 +34,35 @@ async def create_task(request: ChatRequest):
     history = [{"role": h.role, "content": h.content} for h in request.history]
     attachments = [{"name": a.name, "text": a.text} for a in request.attachments]
     return await create_and_run(request.message.strip(), history, attachments)
+
+@router.get("/sampling-presets")
+async def sampling_presets():
+    # Surfaced so the UI can show what each strategy means without hardcoding the
+    # explanatory text twice (here and in the frontend).
+    return agent.SAMPLING_PRESETS
+
+@router.post("/compare")
+async def compare_sampling(request: ChatRequest):
+    # A dedicated endpoint, not a `general` action in the task-routing pipeline: a user
+    # reaching for this is explicitly asking to see how temperature/top-p change the
+    # output, not asking AETHER to take some action — it would be wrong to let the
+    # classifier ever route an ordinary message here instead of to a real action.
+    message = request.message.strip()
+    history = [{"role": h.role, "content": h.content} for h in request.history]
+    context = None
+    if looks_factual(message):
+        context = await asyncio.to_thread(wikipedia_summary, message)
+    variants = await generate_all_variants(message, history, context)
+    return {"message": message, "context": context, "variants": variants}
+
+@router.post("/tasks/{task_id}/select")
+async def pick_task_variant(task_id: str, body: VariantSelect):
+    try:
+        return await select_variant(task_id, body.variant_key)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 @router.post("/attachments")
 async def upload_attachment(file: UploadFile = File(...)):
@@ -134,9 +165,8 @@ async def edit_document(name: str, body: NoteUpdate):
 async def local_status():
     available = agent.is_available()
     models = agent.list_models() if available else []
-    return {"ollama_online":available,"configured_model":OLLAMA_MODEL,
-            "model_installed":OLLAMA_MODEL in models,"models":models,
-            "inference":"local","speech_model":WHISPER_MODEL}
+    return {"api_online":available,"configured_model":AI_MODEL,"provider":AI_PROVIDER,
+            "models":models,"inference":f"cloud ({AI_PROVIDER})","speech_model":WHISPER_MODEL}
 
 @router.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):

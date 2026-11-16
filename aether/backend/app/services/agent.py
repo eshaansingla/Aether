@@ -1,6 +1,6 @@
-import json, re
+import json, re, time
 import httpx
-from app.config import OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_FAST_MODEL
+from app.config import AI_API_KEY, AI_BASE_URL, AI_MODEL, AI_FAST_MODEL
 
 ACTIONS = "write_document,take_note,set_reminder,open_app,play_music,search_files,open_website,system_control,ask_chatgpt,general"
 SYSTEM_COMMAND_LIST = "wifi_on,wifi_off,lock,mute,volume_up,volume_down,volume_set,brightness_up,brightness_down,brightness_set,sleep,screenshot"
@@ -51,8 +51,8 @@ the orchestrator can be extended to multi-step plans later.
 '''
 
 CHAT_SYSTEM = '''
-You are AETHER, a private, helpful assistant running entirely on the user's own computer through a local
-language model — no cloud AI service is involved.
+You are AETHER, a private desktop assistant. Your replies are generated through a cloud AI API; the rest
+of AETHER (file actions, task execution, notes, reminders, app launching) runs locally on the user's device.
 
 Answer like a sharp, direct person would, not a customer-service script. Lead with the actual answer, not a
 restatement of the question or a throat-clearing opener ("Great question!", "I'd be happy to help!"). Match
@@ -84,12 +84,17 @@ missing information rather than stopping to mention it.
 
 Two different kinds of requests need two different responses to missing information:
 - A letter, email, or message addressed to someone (e.g. "write an email to my professor asking for
-  a meeting"): fill in every concrete detail that would normally be personal — the recipient's name,
-  sender's name, course, date, time, subject — with a clearly bracketed placeholder like
-  [Professor's Name], [Your Name], [Course Name], [Proposed Date/Time], written exactly where that
-  detail belongs, so the user can find-and-replace it. Still write the complete, properly structured
-  letter/email around those placeholders — greeting, body, sign-off — never a description of how to
-  write one.
+  a meeting", "write an email applying for an internship"): fill in every concrete detail that would
+  normally be personal — the recipient's name, sender's name, course, date, time, subject — with a
+  clearly bracketed placeholder like [Professor's Name], [Your Name], [Course Name], [Proposed
+  Date/Time], written exactly where that detail belongs, so the user can find-and-replace it. This
+  applies just as much to claimed accomplishments, skills, employers, project names, and metrics in a
+  job/internship application as it does to a name or date — a sentence like "I built a REST API used
+  by 2,000+ users" is a specific, checkable factual claim about the sender exactly like a name is;
+  inventing the number or the project is fabricating a résumé claim, not filling in reasonable detail.
+  Use a placeholder like [a specific project or achievement, e.g. built X / led Y / improved Z by N%]
+  instead. Still write the complete, properly structured letter/email around those placeholders —
+  greeting, body, sign-off — never a description of how to write one.
 - A general composition with no addressee (e.g. "an essay about dogs", "a report on renewable
   energy"): if the request has no personal specifics, write a general, factual piece about that
   topic. Never invent a specific name, person, pet, or personal anecdote that was not given in the
@@ -113,25 +118,52 @@ something genuinely non-obvious.
 
 class LocalAgent:
     def __init__(self):
-        self.base_url = OLLAMA_BASE_URL
-        self.model = OLLAMA_MODEL
-        self.fast_model = OLLAMA_FAST_MODEL
+        self.base_url = AI_BASE_URL
+        self.api_key = AI_API_KEY
+        self.model = AI_MODEL
+        self.fast_model = AI_FAST_MODEL
+
+    def _headers(self):
+        return {"Authorization": f"Bearer {self.api_key}"}
+
+    def _complete(self, model, messages, temperature, max_tokens=None, json_mode=False, top_p=None, timeout=60):
+        if not self.api_key:
+            raise RuntimeError("OPENAI_API_KEY is not configured.")
+        payload = {"model": model, "messages": messages, "temperature": temperature}
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        if top_p is not None:
+            payload["top_p"] = top_p
+        # A free-tier provider's per-minute rate limit is easy to hit in a short burst
+        # (several AETHER actions in a row each make 1-2 calls) and recovers within
+        # seconds — surfacing that as "the API isn't reachable" to the user would be
+        # wrong when a one-second wait and retry would have just worked.
+        for attempt in range(3):
+            r = httpx.post(
+                f"{self.base_url}/chat/completions",
+                headers=self._headers(),
+                json=payload,
+                timeout=timeout,
+            )
+            if r.status_code == 429 and attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            r.raise_for_status()
+            return (r.json()["choices"][0]["message"].get("content") or "").strip()
 
     def is_available(self):
+        if not self.api_key:
+            return False
         try:
-            r = httpx.get(f"{self.base_url}/api/tags", timeout=2.5)
-            r.raise_for_status()
-            return True
+            r = httpx.get(f"{self.base_url}/models", headers=self._headers(), timeout=5)
+            return r.status_code == 200
         except Exception:
             return False
 
     def list_models(self):
-        try:
-            r = httpx.get(f"{self.base_url}/api/tags", timeout=3)
-            r.raise_for_status()
-            return [m.get("name") for m in r.json().get("models", [])]
-        except Exception:
-            return []
+        return sorted({self.model, self.fast_model}) if self.is_available() else []
 
     def understand(self, text, history=None):
         # A short slice of recent turns so a follow-up like "turn it up more" or "do that
@@ -144,27 +176,18 @@ class LocalAgent:
             if role in ("user", "assistant") and content:
                 context_messages.append({"role": role, "content": content[:400]})
         try:
-            r = httpx.post(
-                f"{self.base_url}/api/chat",
-                json={
-                    "model": self.fast_model,
-                    "stream": False,
-                    "format": "json",
-                    "messages": [
-                        {"role": "system", "content": SYSTEM},
-                        *context_messages,
-                        {"role": "user", "content": text}
-                    ],
-                    "options": {"temperature": 0.1, "num_predict": 220, "num_ctx": 4096},
-                    "think": False
-                },
-                timeout=60
+            raw = self._complete(
+                self.fast_model,
+                [
+                    {"role": "system", "content": SYSTEM},
+                    *context_messages,
+                    {"role": "user", "content": text}
+                ],
+                temperature=0.1, max_tokens=220, json_mode=True, timeout=30,
             )
-            r.raise_for_status()
-            raw = r.json().get("message", {}).get("content", "{}")
-            data = json.loads(raw)
+            data = json.loads(raw or "{}")
             if data.get("action") not in ACTIONS.split(","):
-                raise ValueError("The local model returned an unsupported action.")
+                raise ValueError("The model returned an unsupported action.")
         except Exception:
             data = self._fallback(text)
         data = self._chat_only_override(text, data)
@@ -198,10 +221,14 @@ class LocalAgent:
                 return {"action": "general"}
         return data
 
+    _INFO_REQUEST = re.compile(r"(?i)^\s*(tell me (more )?about|explain|describe|give me (info|information) (on|about))\b")
+
     @staticmethod
     def _looks_like_question(text):
         low = text.strip().lower()
         if low.endswith("?"):
+            return True
+        if LocalAgent._INFO_REQUEST.search(text):
             return True
         first = low.split(" ", 1)[0].strip(",.!") if low else ""
         return first in QUESTION_STARTERS
@@ -210,62 +237,237 @@ class LocalAgent:
         messages = [{"role": "system", "content": CHAT_SYSTEM}]
         if context:
             messages.append({"role": "system", "content":
-                "The user has attached the following document(s) to this conversation. Use them to "
-                "answer questions, discuss, summarize, or help edit as asked. Only state what is "
-                "actually in them — never invent content that isn't there.\n\n" + context})
+                "The following reference material (either attached by the user, or looked up to help "
+                "answer accurately) is available for this reply. Ground your answer in it rather than "
+                "your own memory. Never state a specific name, date, number, or other concrete fact "
+                "unless that exact fact is written in the material below — if it only covers the "
+                "general topic but not the specific detail asked (e.g. it describes an organization but "
+                "never names the person the question asks about), say plainly that the detail isn't in "
+                "what you have rather than filling the gap with your own guess, even a plausible-sounding "
+                "one.\n\n" + context})
+        for item in (history or [])[-20:]:
+            role = item.get("role") if isinstance(item, dict) else getattr(item, "role", None)
+            content = item.get("content") if isinstance(item, dict) else getattr(item, "content", None)
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content})
+        # Same fabrication risk as generate_text() for a job/internship application that
+        # the classifier happens to route here (general chat) instead of to write_document
+        # — the reminder has to apply wherever this kind of request actually lands.
+        final_content = message
+        if self._APPLICATION_LETTER.search(message):
+            final_content += self._FABRICATION_REMINDER
+        messages.append({"role": "user", "content": final_content})
+        # A grounded reply needs to stick closely to the given material rather than
+        # improvise — a lower temperature reduces how often the model still states an
+        # unsupported specific despite the instruction above, though a model can still
+        # occasionally ignore it, which is what the verification pass below catches.
+        try:
+            text = self._complete(
+                self.model, messages,
+                temperature=0.2 if context else 0.6, max_tokens=900, timeout=60,
+            )
+            if not text:
+                return "I don't have a response for that right now."
+            # Even a frontier model will occasionally state a specific, plausible-sounding
+            # wrong name/date/number with full confidence rather than say it doesn't know.
+            # A second pass asking a narrower yes/no question ("is this specific fact
+            # actually written in the material?") is a task models handle far more
+            # reliably than open-ended generation, so it catches what the system prompt
+            # alone did not.
+            if context:
+                verdict = self._verify_grounded(context, message, text)
+                if not verdict["supported"]:
+                    # Surfacing the fetched material is only useful when it's actually
+                    # about the thing being asked — a lookup on a vague or mistyped
+                    # subject can resolve to a completely different, unrelated entity
+                    # (e.g. a one-letter subject landing on a dictionary entry for that
+                    # letter), and showing that alongside an apology reads as more
+                    # confidently wrong than just admitting there's nothing reliable.
+                    if verdict["relevant"]:
+                        return (
+                            "I can't confirm that specific detail from what I have — stating it "
+                            "would risk giving you a made-up answer. Here's the reference material "
+                            "I did find, which may still help:\n\n" + context
+                        )
+                    return "I don't have reliable information to answer that."
+            return text
+        except Exception:
+            return ("The AI API is not reachable right now. Check that OPENAI_API_KEY is set "
+                     "correctly in the backend's .env file and that you have network access, "
+                     "then try again.")
+
+    # The decoding strategies an OpenAI-compatible chat-completions API actually exposes:
+    # temperature and top_p (nucleus) are standard parameters every provider tested here
+    # accepts. top_k and beam search are NOT exposed by any of them (confirmed against
+    # Groq: `top_k` → 400 "unsupported property"; `n>1` → 400 "must be at most 1") — both
+    # need direct access to the raw per-token logit distribution during decoding, which a
+    # hosted inference API deliberately doesn't expose. Those two presets are marked
+    # kind="local": generate_variant_any() runs them through a small local model instead
+    # (metrics.generate_topk/generate_beam) rather than the cloud API, since that's the
+    # only way to run them for real rather than faking the output.
+    SAMPLING_PRESETS = [
+        {"key": "greedy", "label": "Greedy decoding", "kind": "cloud", "temperature": 0.0, "top_p": 1.0,
+         "note": "Always picks the single most likely next token — deterministic, same output every time."},
+        {"key": "low_temp", "label": "Low-temperature sampling", "kind": "cloud", "temperature": 0.3, "top_p": 1.0,
+         "note": "Samples from the full distribution but sharply favors likely tokens — mostly conservative, slight variation."},
+        {"key": "nucleus", "label": "Nucleus (top-p) sampling", "kind": "cloud", "temperature": 0.8, "top_p": 0.9,
+         "note": "Samples only from the smallest set of tokens whose probabilities sum to 90%, excluding the unlikely long tail."},
+        {"key": "high_temp", "label": "High-temperature random sampling", "kind": "cloud", "temperature": 1.0, "top_p": 1.0,
+         "note": "Flattens the distribution before sampling — most diverse/creative, least predictable, highest risk of drifting off-topic."},
+        {"key": "top_k", "label": "Top-k sampling", "kind": "local", "top_k": 50,
+         "note": "Samples only from the 50 most likely next tokens at each step. Run locally on a small model (distilgpt2) since no hosted API exposes top-k — expect rougher, less coherent output than the cloud presets above."},
+        {"key": "beam", "label": "Beam search", "kind": "local", "num_beams": 4,
+         "note": "Tracks the 4 most probable whole sequences at once and keeps the best, instead of committing to one token at a time. Run locally on the same small model — deterministic, but a base model's beam search often degenerates into repetition, which is itself a well-known real failure mode of beam search, not a bug here."},
+    ]
+
+    def _build_chat_messages(self, message, history=None, context=None):
+        messages = [{"role": "system", "content": CHAT_SYSTEM}]
+        if context:
+            messages.append({"role": "system", "content":
+                "Reference material for this reply:\n\n" + context})
         for item in (history or [])[-20:]:
             role = item.get("role") if isinstance(item, dict) else getattr(item, "role", None)
             content = item.get("content") if isinstance(item, dict) else getattr(item, "content", None)
             if role in ("user", "assistant") and content:
                 messages.append({"role": role, "content": content})
         messages.append({"role": "user", "content": message})
-        # Ollama defaults to a 2048-token context window regardless of what the model
-        # actually supports — with up to 20 prior turns in play, that's not enough; a
-        # longer-running conversation would silently lose its earlier turns rather than
-        # erroring. An attached document needs more still.
-        options = {"temperature": 0.6, "num_ctx": 8192 if context else 4096}
+        return messages
+
+    def generate_variant(self, message, preset, history=None, context=None):
+        # One sampling preset, one call — kept separate from generate_variants (below) so
+        # the API route can fire all presets through asyncio.to_thread concurrently rather
+        # than one after another, which would otherwise take ~4x as long as a normal reply.
+        # Skips the self-verification pass chat() normally runs on a grounded answer — the
+        # point here is to show each strategy's raw, uncorrected behavior side by side
+        # (including where high-temperature sampling drifts from the grounded facts), not
+        # to smooth every variant back to the same safe answer.
+        messages = self._build_chat_messages(message, history, context)
         try:
-            r = httpx.post(
-                f"{self.base_url}/api/chat",
-                json={
-                    "model": self.model,
-                    "stream": False,
-                    "messages": messages,
-                    "options": options,
-                    "think": False
-                },
-                timeout=180
+            text = self._complete(
+                self.model, messages,
+                temperature=preset["temperature"], top_p=preset["top_p"],
+                max_tokens=500, timeout=60,
             )
-            r.raise_for_status()
-            text = self._strip_think(r.json().get("message", {}).get("content", ""))
-            return text or "I don't have a response for that right now."
+        except Exception as exc:
+            text = f"(generation failed: {exc})"
+        return {**preset, "text": text}
+
+    def generate_local_variant(self, message, preset, context=None):
+        # top_k/beam presets: distilgpt2 is a base (non-instruction-tuned) model, so it
+        # doesn't "answer" a question the way the cloud models do — it continues
+        # whatever text it's given. Framing the input as a short completion prompt gets
+        # something topically anchored rather than a totally unrelated continuation,
+        # though output quality is still well below the cloud presets by design (see the
+        # preset notes above) — this is about running the real algorithm, not winning on
+        # quality.
+        from app.eval import metrics
+        seed = (f"{context}\n\n" if context else "") + f"Question: {message}\nAnswer:"
+        try:
+            if preset["key"] == "top_k":
+                text = metrics.generate_topk(seed, k=preset["top_k"])
+            else:
+                text = metrics.generate_beam(seed, num_beams=preset["num_beams"])
+        except Exception as exc:
+            text = f"(generation failed: {exc})"
+        return {**preset, "text": text}
+
+    def generate_variant_any(self, message, preset, history=None, context=None):
+        return (self.generate_variant(message, preset, history, context) if preset["kind"] == "cloud"
+                else self.generate_local_variant(message, preset, context))
+
+    def generate_variants(self, message, history=None, context=None):
+        # Sequential convenience wrapper (e.g. for a script/test) — the live API route
+        # uses generate_variant_any() directly under asyncio.gather for real concurrency.
+        return [self.generate_variant_any(message, preset, history, context) for preset in self.SAMPLING_PRESETS]
+
+    def _verify_grounded(self, context, question, answer):
+        # A narrow yes/no check ("is every specific fact in this draft actually present in
+        # the reference text?") is a task models handle far more reliably than open-ended
+        # generation — it's classification, not invention. Uses the fast/classifier model
+        # (cheap) rather than the main writer model.
+        try:
+            raw = self._complete(
+                self.fast_model,
+                [
+                    {"role": "system", "content":
+                        'Fact-check a draft answer against a reference text. Reply with only a JSON '
+                        'object {"relevant": true or false, "supported": true or false}. "relevant" '
+                        'is true only if the reference text is actually about the same person, place, '
+                        'or thing the question is asking about (not a different entity that happens '
+                        'to share a name or spelling — e.g. a question about a company called "X" and '
+                        'a reference text about the letter "X" are NOT relevant). "supported" is true '
+                        'only if every specific name, date, number, title, or other concrete fact '
+                        'stated in the draft answer is explicitly written in the reference text. If '
+                        'the draft states a specific fact that the reference text never mentions — '
+                        'even one that sounds plausible or well-known — "supported" must be false. '
+                        'General, non-specific statements (e.g. restating the question\'s own topic) '
+                        'do not need to be checked. If "relevant" is false, "supported" must also be '
+                        'false.'},
+                    {"role": "user", "content":
+                        f"Reference text:\n{context}\n\nQuestion: {question}\n\nDraft answer: {answer}"}
+                ],
+                temperature=0.0, max_tokens=40, json_mode=True, timeout=30,
+            )
+            data = json.loads(raw or "{}")
+            return {"supported": bool(data.get("supported")), "relevant": bool(data.get("relevant"))}
         except Exception:
-            return ("The local AI model is not reachable right now. Make sure Ollama is running "
-                     "and the configured model is installed, then try again.")
+            # The verifier itself failing is not a reason to block an otherwise-fine
+            # reply — fail open rather than degrade every grounded answer to the fallback.
+            return {"supported": True, "relevant": True}
 
     _CODE_FORMATS = {"py", "js", "ts", "html", "css", "java", "c", "cpp", "sh", "yaml", "json", "xml"}
 
-    @staticmethod
-    def _strip_think(text):
-        # qwen3 is a hybrid-thinking model: some Ollama versions still let its reasoning
-        # leak into the message content even with think:False in the request — sometimes
-        # as a full <think>...</think> block, sometimes as bare reasoning text with only
-        # the closing </think> tag present (the opening one gets eaten by the template).
-        # Either way, anything up to and including the last </think> is reasoning, not
-        # the answer, and would otherwise end up saved straight into the output file.
-        idx = text.rfind("</think>")
-        return (text[idx + len("</think>"):] if idx != -1 else text).strip()
+    # "Write an essay about my dog" has no real dog to describe, so the model invents one
+    # (a name, a breed, an anecdote) rather than writing generally about dogs — WRITER_SYSTEM
+    # already forbids this, but that rule sits in a long system prompt the model reliably
+    # ignores for exactly this case. Repeating it right next to the instruction itself (the
+    # text the model just finished reading, not a block from several messages back) catches
+    # what the system prompt alone did not; verified against "write an essay about my dog"
+    # specifically inventing "Max, a golden retriever" without this reminder.
+    _PERSONAL_NO_DETAIL = re.compile(
+        r"\bmy\s+(?:dog|cat|pet|puppy|kitten|trip|vacation|car|school|family|friend|city|"
+        r"hometown|room|house|job|life|brother|sister|mother|father|parents|girlfriend|"
+        r"boyfriend|wife|husband|teacher|neighborhood)\b",
+        re.IGNORECASE,
+    )
 
-    def generate_text(self, instruction, fmt="docx", context=None):
-        # Small local instruct models readily drift into a chatty reply (greeting, "feel
-        # free to ask!", a fabricated persona addressed as "you") instead of writing the
-        # actual document, especially on a short, detail-free prompt like "an essay about
-        # my dog" — the model has no real dog to describe, so it invents one and replies
-        # as if continuing a conversation. The system prompt has to rule that out directly.
+    # A job/internship application letter has the same fabrication risk as "my dog" but in
+    # a more consequential direction: asked to make the sender sound qualified, a capable
+    # model readily invents specific, checkable résumé claims (a project, a user count, a
+    # percentage improvement) to fill the gap — confirmed against "write an email to a
+    # hiring manager applying for a software engineering internship", which invented "a
+    # REST API used by 2,000+ users" and "reducing response time by 35%" out of nothing,
+    # even with WRITER_SYSTEM's bracketed-placeholder rule already covering this case. This
+    # request can land in either generate_text (write_document) or chat (general) depending
+    # on how the classifier routes it, so both call sites need the same reminder.
+    _APPLICATION_LETTER = re.compile(
+        r"\b(hiring manager|cover letter|job application|internship application|recruiter|"
+        r"apply(?:ing)?\s+for\s+(?:a\s+|an\s+)?(?:job|internship|position|role))\b",
+        re.IGNORECASE,
+    )
+    _FABRICATION_REMINDER = (
+        "\n\n(Reminder: do not invent specific achievements, projects, metrics, user counts, "
+        "or percentages that weren't given — those are checkable factual claims, not filler. "
+        "Use a bracketed placeholder like [a specific achievement, e.g. built X / improved Y "
+        "by N%] instead.)"
+    )
+
+    def _prepare_document_messages(self, instruction, fmt, context=None):
+        # Even a frontier model readily drifts into a chatty reply (greeting, "feel free to
+        # ask!", a fabricated persona addressed as "you") instead of writing the actual
+        # document, especially on a short, detail-free prompt like "an essay about my dog"
+        # — there's no real dog to describe, so it can invent one and reply as if
+        # continuing a conversation. The system prompt has to rule that out directly.
         is_code = fmt in self._CODE_FORMATS
         system = WRITER_CODE_SYSTEM if is_code else WRITER_SYSTEM
         user_content = instruction
-        options = {"temperature": 0.4, "num_predict": 1400, "num_ctx": 4096}
+        if not is_code and not context and self._PERSONAL_NO_DETAIL.search(instruction):
+            user_content += (
+                "\n\n(Reminder: no specific name, breed, or personal detail was given for "
+                "this — do not invent one. Write generally about the topic itself.)"
+            )
+        if not is_code and self._APPLICATION_LETTER.search(instruction):
+            user_content += self._FABRICATION_REMINDER
         if context:
             system += (
                 "\n\nSource document(s) are given below the task, each between triple quotes. Base "
@@ -275,24 +477,47 @@ class LocalAgent:
                 "explicitly asks for new original material."
             )
             user_content = f"{context}\n\nTask: {instruction}"
-            options["num_ctx"] = 8192
-        r = httpx.post(
-            f"{self.base_url}/api/chat",
-            json={
-                "model": self.model,
-                "stream": False,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user_content}
-                ],
-                "options": options,
-                "think": False
-            },
-            timeout=240
+        return system, user_content, is_code
+
+    def generate_text(self, instruction, fmt="docx", context=None):
+        system, user_content, is_code = self._prepare_document_messages(instruction, fmt, context)
+        text = self._complete(
+            self.model,
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_content}
+            ],
+            temperature=0.4, max_tokens=1800, timeout=120,
         )
-        r.raise_for_status()
-        text = self._strip_think(r.json().get("message", {}).get("content", ""))
         return self._strip_code_fence(text) if is_code else text
+
+    def generate_document_variant(self, instruction, fmt, preset, context=None):
+        # Document-writing counterpart to generate_variant_any() — same 6 sampling
+        # presets, but built on WRITER_SYSTEM (plus its fabrication-reminder handling)
+        # instead of CHAT_SYSTEM, since a document request is a different kind of prompt
+        # than a conversational one.
+        system, user_content, is_code = self._prepare_document_messages(instruction, fmt, context)
+        if preset["kind"] == "cloud":
+            try:
+                text = self._complete(
+                    self.model,
+                    [{"role": "system", "content": system}, {"role": "user", "content": user_content}],
+                    temperature=preset["temperature"], top_p=preset["top_p"],
+                    max_tokens=1800, timeout=120,
+                )
+                if is_code:
+                    text = self._strip_code_fence(text)
+            except Exception as exc:
+                text = f"(generation failed: {exc})"
+        else:
+            from app.eval import metrics
+            seed = (f"{context}\n\n" if context else "") + f"Task: {instruction}\n\n"
+            try:
+                text = (metrics.generate_topk(seed, k=preset["top_k"]) if preset["key"] == "top_k"
+                        else metrics.generate_beam(seed, num_beams=preset["num_beams"]))
+            except Exception as exc:
+                text = f"(generation failed: {exc})"
+        return {**preset, "text": text}
 
     @staticmethod
     def _strip_code_fence(text):
@@ -339,6 +564,6 @@ class LocalAgent:
         if re.search(r"(?i)\b(write|create|draft)\b", s) and re.search(r"(?i)\b(document|essay|report|letter|word file)\b", s):
             return {"action":"write_document","title":"AETHER document","content":s,"format":"docx"}
         return {"action":"general","response":
-            "The local AI model is not available yet. Start Ollama and download the configured model, or try a supported command such as 'Take a note: …'."}
+            "The AI API isn't reachable right now — check that OPENAI_API_KEY is set in the backend's .env file, or try a supported command such as 'Take a note: …'."}
 
 agent = LocalAgent()

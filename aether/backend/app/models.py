@@ -15,6 +15,9 @@ class ChatRequest(BaseModel):
     history: list[HistoryMessage] = Field(default_factory=list)
     attachments: list[AttachmentIn] = Field(default_factory=list, max_length=6)
 
+class VariantSelect(BaseModel):
+    variant_key: str = Field(min_length=1, max_length=40)
+
 class TaskStep(BaseModel):
     name: str
     status: Literal["pending", "running", "completed", "failed"] = "pending"

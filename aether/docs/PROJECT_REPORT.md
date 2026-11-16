@@ -54,6 +54,39 @@ The desktop client is built with Electron, React and TypeScript. It sends comman
 | SQLite | Persistent task history and execution steps |
 | faster-whisper | Local speech transcription |
 
+## Results and analysis
+
+`scripts/evaluate_generation.py` ran 9 prompts (7 factual/summarization prompts with a
+known reference answer, 2 open-ended) through all 6 sampling strategies via
+`POST /api/compare`, scoring every output with perplexity (a fixed local `distilgpt2`
+reference model) and, where a reference answer exists, BLEU and ROUGE-L. Full run:
+`backend/eval_results/run_20261116T082744Z.json`.
+
+| Strategy | Mean perplexity (n=9) | Mean BLEU (n=7) | Mean ROUGE-L (n=7) |
+|---|---|---|---|
+| Greedy decoding | 1542.37 | 32.88 | 0.769 |
+| Low-temperature sampling | 867.13 | 33.16 | 0.757 |
+| Nucleus (top-p) sampling | 815.26 | 31.60 | 0.673 |
+| High-temperature random sampling | 865.08 | 41.46 | 0.803 |
+| Top-k sampling (local model) | 21.35 | 0.53 | 0.041 |
+| Beam search (local model) | 9.35 | 5.34 | 0.169 |
+
+Two findings worth stating plainly:
+
+1. **The four cloud strategies barely differ on short factual answers.** BLEU/ROUGE
+   stay in the same narrow band (31–41 BLEU, 0.67–0.80 ROUGE-L) across greedy through
+   high-temperature sampling — for a question with one short correct answer ("Paris"),
+   the sampling strategy has little room to matter. This is the same effect the
+   Playground page warns about before you even run it.
+2. **Low perplexity does not mean correct.** Top-k and beam search score the *lowest*
+   perplexity (9.35–21.35, far below the cloud strategies) because `distilgpt2` finds
+   their rambling/repetitive local-model output highly self-predictable — yet their
+   BLEU/ROUGE against the real answer collapse to near zero. Perplexity measures how
+   unsurprising text is to a reference model, not whether it's right; the grounding-check
+   pass (a separate true/false verification against source material, shown per variant
+   in the UI) is what actually catches wrong answers — perplexity alone would have been
+   misleading here.
+
 ## Safety and privacy
 - The LLM cannot execute arbitrary shell commands.
 - Application launching uses an allowlist.

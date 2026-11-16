@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 from docx import Document
 from app.config import OUTPUT_DIR
@@ -13,9 +14,44 @@ def safe_output_path(filename: str, extension: str) -> Path:
     target = (OUTPUT_DIR / clean).resolve()
     if OUTPUT_DIR.resolve() not in target.parents:
         raise ValueError("Invalid output path.")
+    # A model-suggested title is sometimes missing or generic (e.g. the classifier leaves
+    # "title" empty and both calls fall back to the same default) — writing straight to
+    # that path would silently overwrite a previous, unrelated document with no warning
+    # to the user. A fresh document creation always gets its own file; only the explicit
+    # edit-a-document flow (write_document_text, via _output_path, not this function)
+    # is supposed to overwrite an existing path.
+    if target.exists():
+        stem, suffix = target.stem, target.suffix
+        n = 2
+        while target.exists():
+            target = (OUTPUT_DIR / f"{stem}_{n}{suffix}").resolve()
+            n += 1
     return target
 
 PLAIN_TEXT_FORMATS = {"txt", "md", "csv", "json", "py", "js", "ts", "html", "css", "java", "c", "cpp", "sh", "yaml", "xml"}
+
+# A model trained mostly on Markdown reaches for **bold**/*italic* even when asked for
+# plain prose meant for a .docx — written literally into a Word paragraph, the asterisks
+# themselves show up as visible text instead of as formatting. Rendering them as actual
+# bold/italic runs (and dropping the markers) gets what the model clearly intended
+# without the file looking broken.
+_INLINE_MD = re.compile(r"\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|_(.+?)_")
+
+def _add_formatted_run(paragraph, text: str):
+    pos = 0
+    for m in _INLINE_MD.finditer(text):
+        if m.start() > pos:
+            paragraph.add_run(text[pos:m.start()])
+        bold_text = m.group(1) or m.group(3)
+        italic_text = m.group(2) or m.group(4)
+        run = paragraph.add_run(bold_text if bold_text is not None else italic_text)
+        if bold_text is not None:
+            run.bold = True
+        else:
+            run.italic = True
+        pos = m.end()
+    if pos < len(text):
+        paragraph.add_run(text[pos:])
 
 def _write_docx_body(doc: Document, content: str):
     for block in content.split("\n\n"):
@@ -27,12 +63,13 @@ def _write_docx_body(doc: Document, content: str):
         if len(first) < 100 and (first.startswith("#") or first.lower().startswith(
             ("introduction", "conclusion", "references", "abstract", "background")
         )):
-            doc.add_heading(first.lstrip("# ").strip(), level=1)
+            heading_text = re.sub(r"\*\*|\*|__|_", "", first.lstrip("# ").strip())
+            doc.add_heading(heading_text, level=1)
             remainder = "\n".join(lines[1:]).strip()
             if remainder:
-                doc.add_paragraph(remainder)
+                _add_formatted_run(doc.add_paragraph(), remainder)
         else:
-            doc.add_paragraph(block)
+            _add_formatted_run(doc.add_paragraph(), block)
 
 def create_document(content: str, filename: str, output_format: str) -> Path:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

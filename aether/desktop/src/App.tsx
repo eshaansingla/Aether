@@ -4,13 +4,26 @@ import {
   CircleHelp, Clock3, Command, FileText, FolderSearch,  Mic,
   Moon, Music2, NotebookPen, Plus, Search, Settings2, ShieldCheck,
   Sun, Volume2, X, PanelLeftClose, PanelLeftOpen, Cpu, Paperclip,
-  Square, LoaderCircle, Trash2, Save
+  Square, LoaderCircle, Trash2, Save, FlaskConical, Copy
 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+// The model's replies are plain Markdown (tables, bold, headings, lists) — rendering them
+// as raw text (as a plain {content} string would) shows literal "**", "|---|", "##"
+// characters instead of formatting. remark-gfm adds table/strikethrough support on top of
+// the base CommonMark react-markdown already handles, matching what a model actually
+// outputs (GitHub-flavored Markdown) rather than only the stripped-down original spec.
+function Markdown({ children }: { children: string }) {
+  return <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>;
+}
 
 const API = "http://127.0.0.1:8000";
 const WAKE_PHRASES = ["hi aether","hey aether","hi ether","hey ether","hi eather","hey eather"];
 type Step = {name:string;status:string;detail:string};
-type Task = {task_id:string;instruction:string;status:string;message:string;steps:Step[];output_path?:string;download_url?:string;error?:string;result?:any};
+type VariantMetrics = {perplexity:number|null;perplexity_explanation:string;grounding_check:{supported:boolean;relevant:boolean}|null;grounding_check_explanation:string;similarity:{bleu:number;rougeL:number}|null;similarity_explanation:string};
+type Variant = {key:string;label:string;kind:"cloud"|"local";temperature?:number;top_p?:number;top_k?:number;num_beams?:number;note:string;text:string;metrics:VariantMetrics};
+type Task = {task_id:string;instruction:string;status:string;message:string;steps:Step[];output_path?:string;download_url?:string;error?:string;result?:any;variants?:Variant[]|null;chosen_variant?:string|null};
 type Attachment = {name:string;text:string};
 type Message = {id:string;role:"user"|"assistant";content:string;task?:Task;createdAt:number;newAttachments?:string[]};
 type Thread = {id:string;title:string;messages:Message[];updatedAt:number;attachments?:Attachment[]};
@@ -33,16 +46,18 @@ export default function App(){
   const [input,setInput]=useState("");
   const [busy,setBusy]=useState(false);
   const [backend,setBackend]=useState(false);
-  const [ollama,setOllama]=useState(false);
-  const [modelInstalled,setModelInstalled]=useState(false);
-  const [model,setModel]=useState("qwen3:4b");
-  const [installedModels,setInstalledModels]=useState<string[]>([]);
+  const [apiOnline,setApiOnline]=useState(false);
+  const [model,setModel]=useState("gpt-4o-mini");
   const [recording,setRecording]=useState(false);
   const [dark,setDark]=useState(true);
   const [sidebarOpen,setSidebarOpen]=useState(true);
-  const [page,setPage]=useState<"chat"|"notes"|"reminders"|"settings">("chat");
+  const [page,setPage]=useState<"chat"|"notes"|"reminders"|"playground"|"settings">("chat");
   const [notes,setNotes]=useState<any[]>([]);
   const [reminders,setReminders]=useState<any[]>([]);
+  const [pgPrompt,setPgPrompt]=useState("");
+  const [pgBusy,setPgBusy]=useState(false);
+  const [pgVariants,setPgVariants]=useState<Variant[]|null>(null);
+  const [pgContext,setPgContext]=useState<string|null>(null);
   const [filter,setFilter]=useState("");
   const [noteDraft,setNoteDraft]=useState<{name:string|null;title:string;content:string}|null>(null);
   const [docDraft,setDocDraft]=useState<{name:string;content:string}|null>(null);
@@ -108,11 +123,24 @@ export default function App(){
     try{
       const [h,s,n,r]=await Promise.all([fetch(`${API}/health`),fetch(`${API}/api/status`),fetch(`${API}/api/notes`),fetch(`${API}/api/reminders`)]);
       setBackend(h.ok);
-      if(s.ok){const d=await s.json();setOllama(d.ollama_online);setModelInstalled(d.model_installed);setInstalledModels(d.models||[]);setModel(d.configured_model||"qwen3:4b")}
+      if(s.ok){const d=await s.json();setApiOnline(d.api_online);setModel(d.configured_model||"gpt-4o-mini")}
       if(n.ok)setNotes(await n.json());if(r.ok)setReminders(await r.json());
-    }catch{setBackend(false);setOllama(false)}
+    }catch{setBackend(false);setApiOnline(false)}
   }
   useEffect(()=>{refresh();const id=window.setInterval(refresh,5000);return()=>window.clearInterval(id)},[]);
+
+  async function runPlayground(){
+    const prompt=pgPrompt.trim();
+    if(!prompt||pgBusy)return;
+    setPgBusy(true);setPgVariants(null);setPgContext(null);
+    try{
+      const r=await fetch(`${API}/api/compare`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:prompt,history:[],attachments:[]})});
+      if(!r.ok)throw new Error("The comparison request failed.");
+      const d=await r.json();
+      setPgVariants(d.variants);setPgContext(d.context||null);
+    }catch(e:any){notify(e.message)}
+    finally{setPgBusy(false)}
+  }
 
   function newNote(){setNoteDraft({name:null,title:"",content:""})}
   async function openNote(name:string){
@@ -238,11 +266,25 @@ export default function App(){
         const t:Task=await r.json();
         const text=t.status==="completed"
           ? (t.result?.message || (Array.isArray(t.result)?"I found these matching files.":"Done."))
-          : t.status==="failed" ? `I couldn't complete that: ${t.error||t.message}` : "I'm working on that.";
+          : t.status==="failed" ? `I couldn't complete that: ${t.error||t.message}`
+          : t.status==="awaiting_selection" ? "" : "I'm working on that.";
         patchMessage(threadId,messageId,{content:text,task:t});
-        if(t.status==="completed"||t.status==="failed"){finished=true;setBusy(false);sendingRef.current=false;refresh()}
+        // awaiting_selection isn't a terminal state the way completed/failed are, but
+        // there's nothing left to poll for until the user picks a variant — the
+        // composer unblocks here, and selectVariant() carries the task the rest of the
+        // way to completed once they do.
+        if(t.status==="completed"||t.status==="failed"||t.status==="awaiting_selection"){finished=true;setBusy(false);sendingRef.current=false;refresh()}
       }catch(e:any){patchMessage(threadId,messageId,{content:`Task status error: ${e.message}`});finished=true;setBusy(false);sendingRef.current=false}
     }
+  }
+  async function selectVariant(threadId:string,messageId:string,taskId:string,variantKey:string){
+    try{
+      const r=await fetch(`${API}/api/tasks/${taskId}/select`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({variant_key:variantKey})});
+      const t:Task=await r.json();if(!r.ok)throw new Error((t as any).detail||"Could not finalize that choice.");
+      const text=t.status==="completed"?(t.result?.message||"Done."):`I couldn't complete that: ${t.error||t.message}`;
+      patchMessage(threadId,messageId,{content:text,task:t});
+      refresh();
+    }catch(e:any){notify(e.message)}
   }
   async function startRecording(){
     try{
@@ -387,6 +429,7 @@ export default function App(){
         <button className={`nav-link ${page==="chat"?"selected":""}`} onClick={()=>setPage("chat")}><Command size={16}/> Assistant</button>
         <button className={`nav-link ${page==="notes"?"selected":""}`} onClick={()=>setPage("notes")}><NotebookPen size={16}/> Notes <span className="nav-count">{notes.length||""}</span></button>
         <button className={`nav-link ${page==="reminders"?"selected":""}`} onClick={()=>setPage("reminders")}><Clock3 size={16}/> Reminders <span className="nav-count">{reminders.length||""}</span></button>
+        <button className={`nav-link ${page==="playground"?"selected":""}`} onClick={()=>setPage("playground")}><FlaskConical size={16}/> Playground</button>
       </div>
       <div className="history">
         <div className="side-caption">Recent</div>
@@ -394,7 +437,7 @@ export default function App(){
       </div>
       <div className="side-bottom">
         <button className={`nav-link ${page==="settings"?"selected":""}`} onClick={()=>setPage("settings")}><Settings2 size={16}/> Settings</button>
-        <div className="status-line"><span className={`status-dot ${ollama?"on":""}`}/>{ollama?"Local model connected":"Waiting for Ollama"}</div>
+        <div className="status-line"><span className={`status-dot ${apiOnline?"on":""}`}/>{apiOnline?"AI API connected":"AI API not reachable"}</div>
       </div>
     </aside>}
     <main className="main">
@@ -408,9 +451,9 @@ export default function App(){
           {messages.length===0?<div className="welcome">
             <div className="welcome-mark">A</div>
             <h1>Good to see you.</h1>
-            <p>Your assistant, running privately on your computer.</p>
+            <p>Your assistant — file actions and tasks run on your device, replies are generated via a cloud AI API.</p>
             <div className="prompt-list">{starterPrompts.map(({icon:Icon,title,prompt})=><button className="prompt-pill" key={title} onClick={()=>setInput(prompt)}><Icon size={15}/><span>{title}</span></button>)}</div>
-            <div className="welcome-foot">Your prompts and model inference stay on this device.</div>
+            <div className="welcome-foot">Notes, reminders, files, and app launching stay on this device.</div>
           </div>:<div className="conversation">{messages.map(m=><div className={`message-row ${m.role}`} key={m.id}>
             <div className="message-content">
               {m.role==="user"
@@ -419,8 +462,23 @@ export default function App(){
                   <div className="user-bubble">{m.content}</div>
                 </>
                 :<>
-                  <div className="message-text">{m.content||<span className="typing"><i/><i/><i/></span>}</div>
-                  {m.task&&<div className="task-inline">
+                  {m.task?.status==="awaiting_selection"&&m.task.variants
+                    ?<div className="variant-picker">
+                      <p className="variant-picker-hint">{m.task.variants.length} sampling strategies ran for this reply — pick the one you want to keep.</p>
+                      <div className="pg-grid">{m.task.variants.map(v=><article className="pg-card" key={v.key}>
+                        <div className="pg-card-head"><b>{v.label}</b><button className="modal-primary variant-use" onClick={()=>selectVariant(activeId!,m.id,m.task!.task_id,v.key)}><Check size={12}/> Use this</button></div>
+                        <div className="pg-card-params">{v.kind==="cloud"?`temperature=${v.temperature} · top_p=${v.top_p}`:v.key==="top_k"?`top_k=${v.top_k} (local model)`:`num_beams=${v.num_beams} (local model)`}</div>
+                        <p className="pg-card-note">{v.note}</p>
+                        <div className="pg-card-text"><Markdown>{v.text}</Markdown></div>
+                        <div className="variant-metrics">
+                          <span title={v.metrics.perplexity_explanation}>Perplexity: {v.metrics.perplexity!=null?v.metrics.perplexity.toFixed(1):"—"}</span>
+                          {v.metrics.grounding_check&&<span className={v.metrics.grounding_check.supported?"good":"warn"} title={v.metrics.grounding_check_explanation}>{v.metrics.grounding_check.supported?"Grounded in source":"Not confirmed by source"}</span>}
+                          {v.metrics.similarity&&<span title={v.metrics.similarity_explanation}>BLEU: {v.metrics.similarity.bleu.toFixed(1)} · ROUGE-L: {v.metrics.similarity.rougeL.toFixed(2)}</span>}
+                        </div>
+                      </article>)}</div>
+                    </div>
+                    :<div className="message-text">{m.content?<Markdown>{m.content}</Markdown>:<span className="typing"><i/><i/><i/></span>}</div>}
+                  {m.task&&m.task.status!=="awaiting_selection"&&<div className="task-inline">
                     <div className="task-inline-head"><span className={`task-state ${m.task.status}`}>{m.task.status==="completed"?<CheckCircle2 size={14}/>:m.task.status==="failed"?<CircleHelp size={14}/>:<LoaderCircle size={14} className="spin"/>}{m.task.status}</span><span>{m.task.steps.filter(s=>s.status==="completed").length}/{m.task.steps.length} steps</span></div>
                     {m.task.steps.map((s,i)=><div className="task-mini-step" key={i}><span className={s.status==="completed"?"step-done":s.status==="failed"?"step-fail":"step-pending"}>{s.status==="completed"?<Check size={12}/>:s.status==="failed"?<X size={12}/>:<Circle size={10}/>}</span><span>{s.name}</span><small>{s.status}</small></div>)}
                     {m.task.output_path&&(m.task.download_url?<div className="task-file-row">
@@ -450,11 +508,33 @@ export default function App(){
 
       {page==="notes"&&<section className="utility-page"><div className="page-heading"><div><span className="overline">Personal workspace</span><h1>Your notes</h1><p>Notes saved locally on this computer.</p></div><button className="new-item-btn" onClick={newNote}><Plus size={15}/> New note</button></div>{notes.length?notes.map(n=><article className="data-card clickable" key={n.path} onClick={()=>openNote(n.name)}><NotebookPen size={18}/><div><b>{noteTitle(n.name)}</b><small>{new Date(n.modified*1000).toLocaleString()}</small></div></article>):<div className="empty-panel"><NotebookPen size={26}/><b>No notes yet</b><p>Ask AETHER to save a note, or create one here.</p></div>}</section>}
       {page==="reminders"&&<section className="utility-page"><div className="page-heading"><div><span className="overline">Personal workspace</span><h1>Reminders</h1><p>Scheduled locally by AETHER.</p></div><button className="new-item-btn" onClick={newReminder}><Plus size={15}/> New reminder</button></div>{reminders.length?reminders.map(r=><article className={`data-card clickable ${r.status}`} key={r.id} onClick={()=>openReminder(r)}><Clock3 size={18}/><div><b>{r.message}</b><small>{new Date(r.when).toLocaleString()} · {r.status}</small></div>{r.status!=="done"&&<button className="row-action" onClick={e=>{e.stopPropagation();completeReminder(r.id)}} title="Mark done"><Check size={14}/></button>}</article>):<div className="empty-panel"><Clock3 size={26}/><b>Nothing scheduled</b><p>Try: “Remind me to stretch in 20 minutes,” or create one here.</p></div>}</section>}
-      {page==="settings"&&<section className="utility-page settings-page"><div className="page-heading"><div><span className="overline">Preferences</span><h1>Settings</h1><p>Manage the local AI runtime and application.</p></div></div>
-        <div className="settings-card"><div className="settings-icon"><Cpu size={20}/></div><div className="settings-body"><b>Local language model</b><p>Model inference runs through Ollama on this device. No cloud AI key is configured or required.</p><div className="settings-line"><span>Runtime</span><b className={ollama?"good":""}>{ollama?"Connected":"Not detected"}</b></div><div className="settings-line"><span>Configured model</span><b>{model}</b></div><div className="settings-line"><span>Model installed</span><b className={modelInstalled?"good":"warn"}>{modelInstalled?"Yes":"Not yet"}</b></div><div className="settings-line"><span>Installed models</span><b>{installedModels.join(", ")||"None detected"}</b></div></div></div>
+
+      {page==="playground"&&<section className="utility-page playground-page">
+        <div className="page-heading"><div><span className="overline">GenAI sampling</span><h1>Playground</h1><p>Run one prompt through 6 decoding strategies and compare the raw output, plus how each was computed.</p></div></div>
+        <div className="pg-composer">
+          <textarea className="pg-input" placeholder="Try something open-ended, e.g. “Describe a sunset in one sentence.” (short factual questions tend to look the same across every strategy)" value={pgPrompt} onChange={e=>setPgPrompt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))runPlayground()}}/>
+          <button className="modal-primary pg-run" onClick={runPlayground} disabled={pgBusy||!pgPrompt.trim()}>{pgBusy?<LoaderCircle size={14} className="spin"/>:<FlaskConical size={14}/>}{pgBusy?"Running 6 strategies…":"Compare strategies"}</button>
+        </div>
+        {pgContext&&<p className="pg-grounding-note">A factual lookup was used to ground all replies in the same source material, so differences below come from the sampling strategy, not from different facts.</p>}
+        {pgVariants&&<div className="pg-grid">{pgVariants.map(v=><article className="pg-card" key={v.key}>
+          <div className="pg-card-head"><b>{v.label}</b><button className="icon-btn subtle" onClick={()=>navigator.clipboard?.writeText(v.text)} title="Copy"><Copy size={13}/></button></div>
+          <div className="pg-card-params">{v.kind==="cloud"?`temperature=${v.temperature} · top_p=${v.top_p} (cloud API)`:v.key==="top_k"?`top_k=${v.top_k} (local model)`:`num_beams=${v.num_beams} (local model)`}</div>
+          <p className="pg-card-note">{v.note}</p>
+          <div className="pg-card-text"><Markdown>{v.text}</Markdown></div>
+          <div className="variant-metrics">
+            <span title={v.metrics.perplexity_explanation}>Perplexity: {v.metrics.perplexity!=null?v.metrics.perplexity.toFixed(1):"—"}</span>
+            {v.metrics.grounding_check&&<span className={v.metrics.grounding_check.supported?"good":"warn"} title={v.metrics.grounding_check_explanation}>{v.metrics.grounding_check.supported?"Grounded in source":"Not confirmed by source"}</span>}
+            {v.metrics.similarity&&<span title={v.metrics.similarity_explanation}>BLEU: {v.metrics.similarity.bleu.toFixed(1)} · ROUGE-L: {v.metrics.similarity.rougeL.toFixed(2)}</span>}
+          </div>
+        </article>)}</div>}
+        <div className="pg-limits-note">
+          <b>How top-k and beam search are computed differently from the other 4.</b> Neither is exposed by any hosted chat-completions API (OpenAI, Groq, Gemini) — both require direct access to the model's raw per-token logit distribution during decoding, which a commercial inference API intentionally doesn't expose (confirmed against Groq: <code>top_k</code> → 400 "unsupported property"; <code>n&gt;1</code> → 400 "must be at most 1"). So those two run locally instead, on a small non-instruction-tuned model (distilgpt2) via Hugging Face Transformers' own <code>generate()</code> loop, which does support them directly. Expect rougher output from those two — that's the local model's limits, not a bug.
+        </div>
+      </section>}
+      {page==="settings"&&<section className="utility-page settings-page"><div className="page-heading"><div><span className="overline">Preferences</span><h1>Settings</h1><p>Manage the AI runtime and application.</p></div></div>
+        <div className="settings-card"><div className="settings-icon"><Cpu size={20}/></div><div className="settings-body"><b>AI model</b><p>Replies and document generation run through a cloud AI API (OpenAI, Groq, or Gemini — set with AETHER_PROVIDER in the backend's .env). Requires an API key for that provider and an internet connection.</p><div className="settings-line"><span>API</span><b className={apiOnline?"good":""}>{apiOnline?"Connected":"Not reachable"}</b></div><div className="settings-line"><span>Configured model</span><b>{model}</b></div></div></div>
         <div className="settings-card"><div className="settings-icon"><AudioLines size={20}/></div><div className="settings-body"><b>Local voice</b><p>Speech recognition uses faster-whisper locally. Read-aloud uses the operating system's available speech voices.</p><div className="settings-line"><span>Speech recognition</span><b>faster-whisper · base</b></div><div className="settings-line"><span>Text to speech</span><b>System speech engine</b></div><div className="settings-line"><span>Activation word</span><b className={wakeEnabled?"good":""}>{wakeEnabled?(wakeStatus==="capturing"?"Listening to your command…":"On · say “Hi AETHER”"):"Off"}</b></div><button className="wake-toggle" onClick={()=>setWakeEnabled(v=>!v)}><Mic size={14}/>{wakeEnabled?"Turn off “Hi AETHER”":"Turn on “Hi AETHER”"}</button><p className="settings-hint">When on, AETHER keeps a short rolling local recording and checks it for the phrase "Hi AETHER"; everything after it is sent as your command. This uses more CPU and the microphone continuously.</p></div></div>
-        <div className="settings-card"><div className="settings-icon"><ShieldCheck size={20}/></div><div className="settings-body"><b>Privacy & safety</b><p>Commands are processed locally. AETHER uses an allowlist for application launching and does not expose arbitrary shell execution.</p><div className="settings-line"><span>AI API keys</span><b className="good">Not required</b></div><div className="settings-line"><span>Task database</span><b>SQLite · local</b></div></div></div>
-        <div className="hardware-note"><b>Recommended hardware profile</b><span>16 GB system RAM · NVIDIA GPU with 6 GB VRAM · 256 GB free storage</span><small>Qwen3 4B Q4 is the default target. If generation is slow or memory is constrained, use qwen3:1.7b.</small></div>
+        <div className="settings-card"><div className="settings-icon"><ShieldCheck size={20}/></div><div className="settings-body"><b>Privacy & safety</b><p>File actions, notes, and reminders are processed locally. Chat messages and document requests are sent to OpenAI's API to generate a reply. AETHER uses an allowlist for application launching and does not expose arbitrary shell execution.</p><div className="settings-line"><span>AI API key</span><b className={apiOnline?"good":"warn"}>{apiOnline?"Configured":"Required — set in backend .env"}</b></div><div className="settings-line"><span>Task database</span><b>SQLite · local</b></div></div></div>
       </section>}
     </main>
 

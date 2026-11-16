@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime, timedelta
-import json, re, uuid
+import json, os, re, uuid
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.config import NOTES_DIR, DATA_DIR
 
@@ -68,21 +68,37 @@ def delete_note(name: str):
     path = _note_path(name)
     path.unlink()
 
+# Directories a search has no real reason to walk into: dependency/build/VCS trees that
+# can hold tens of thousands of files each. Without pruning these, a single search on a
+# machine with so much as one git repo under Documents can run for minutes rather than
+# the instant local lookup the user actually asked for.
+_SKIP_DIR_NAMES = {
+    "node_modules", ".venv", "venv", ".git", "__pycache__", "dist", "build",
+    ".next", ".cache", "site-packages", "AppData",
+}
+_MAX_DIRS_SCANNED = 4000
+
 def search_files(query: str, limit: int = 20):
     roots = [Path.home() / "Desktop", Path.home() / "Documents", Path.home() / "Downloads"]
     q = query.lower()
     matches = []
+    dirs_scanned = 0
     for base in roots:
         if not base.exists():
             continue
-        try:
-            for p in base.rglob("*"):
-                if p.is_file() and q in p.name.lower():
-                    matches.append({"name": p.name, "path": str(p)})
-                    if len(matches) >= limit:
-                        return matches
-        except (PermissionError, OSError):
-            continue
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [d for d in dirnames if d not in _SKIP_DIR_NAMES and not d.startswith(".")]
+            dirs_scanned += 1
+            if dirs_scanned > _MAX_DIRS_SCANNED:
+                return matches
+            try:
+                for name in filenames:
+                    if q in name.lower():
+                        matches.append({"name": name, "path": str(Path(dirpath) / name)})
+                        if len(matches) >= limit:
+                            return matches
+            except OSError:
+                continue
     return matches
 
 def create_reminder(message: str, minutes: int):

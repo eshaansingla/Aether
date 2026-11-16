@@ -1,0 +1,464 @@
+[
+  {
+    "id": "factual_capital",
+    "prompt": "What is the capital of France?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "France is one of Europe\u200dn. The national capital of France, the capital of France, comprises more than 4.1 million people. However, these include 11,981 persons and 6,835,052 people, of which 2.4 million are of African descent. It",
+        "perplexity": 15.475698045812917,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France",
+        "perplexity": 1.9901160698637244,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_author",
+    "prompt": "Who wrote Romeo and Juliet?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "William Shakespeare.",
+        "perplexity": 6435.652397856504,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "William\u202fShakespeare.",
+        "perplexity": 209.0575150048944,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "William Shakespeare.",
+        "perplexity": 6435.652397856504,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "William\u202fShakespeare.",
+        "perplexity": 209.0575150048944,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "David and Olivia are the best actresses and TV shows/films with less money, so there is no competition for stars.\nRome, the sequel to Romeo and Juliet, is on Amazon with $10.99 and will cost $7.49.\nLudwig Nesbitt",
+        "perplexity": 20.431672440502542,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Romeo and Juliet.\nAnswer: Romeo and Juliet.\nAnswer: Romeo and Juliet.\nAnswer: Romeo and Juliet.\nAnswer: Romeo and Juliet.",
+        "perplexity": 5.90354763863009,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_symbol",
+    "prompt": "What is the chemical symbol for gold?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "I mean I guess the most important is that we know because the gold. It can make me a little bit sad and sad when we talk about the gold.\nQuestion: Are the prices of gold more?\nAnswer: They are now higher than they were in 1998. So we are very confident",
+        "perplexity": 24.575365934151385,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.",
+        "perplexity": 3.359265984687553,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_planet",
+    "prompt": "What is the largest planet in the solar system?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Jupiter.",
+        "perplexity": 6712.358035330214,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Jupiter.",
+        "perplexity": 6712.358035330214,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Jupiter is the largest planet in our solar system.",
+        "perplexity": 20.03225608456584,
+        "bleu": 4.196114906296549,
+        "rougeL": 0.19999999999999998
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Jupiter.",
+        "perplexity": 6712.358035330214,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "In our view, the sun is the largest planet in the solar system. The sun is the main source of all the solar radiation. In the solar system, the sun receives at least the amount of solar radiation as it enters the solar system. The sun is more than twice that amount and is the",
+        "perplexity": 8.659878604972949,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "It is the largest planet in the solar system.\nAnswer: It is the largest planet in the solar system.\nAnswer: It is the largest planet in the solar system.\nAnswer: It is the largest planet in the solar system.\nAnswer: It is the largest planet in the solar",
+        "perplexity": 2.6267019760996266,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_river",
+    "prompt": "What is the longest river in the world?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "The Amazon River, at roughly\u202f7,000\u202fkm (about\u202f4,350\u202fmi), is now considered the longest river on Earth, edging out the Nile.",
+        "perplexity": 59.96582373578059,
+        "bleu": 1.5880117714047368,
+        "rougeL": 0.15384615384615385
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "The Nile is traditionally listed as the world\u2019s longest river, about\u202f6,650\u202fkm (4,130\u202fmi) long. Some recent measurements argue the Amazon may be slightly longer, but the Nile remains the standard answer.",
+        "perplexity": 72.06983462868993,
+        "bleu": 1.8864569336713677,
+        "rougeL": 0.10526315789473684
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "The Nile is traditionally listed as the world\u2019s longest river\u2014about\u202f6,650\u202fkm (4,130\u202fmi). Recent surveys, however, claim the Amazon could be a few kilometres longer, so the title is still debated.",
+        "perplexity": 63.834900329979,
+        "bleu": 1.8864569336713677,
+        "rougeL": 0.10526315789473684
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "The Nile\u202fRiver (about\u202f6,650\u202fkm/4,130\u202fmi) has long been regarded as the world\u2019s longest river, though recent measurements argue that the Amazon\u202fRiver may be slightly longer. So the Nile holds the traditional title, while the Amazon is a strong contender.",
+        "perplexity": 54.57969474444556,
+        "bleu": 1.4583397289082511,
+        "rougeL": 0.08333333333333333
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "Not a long enough.\nAnswer: A long enough.\nAnswer: A long enough.\nAnswer: A long enough.\nQuestion 2: What if you want to get off of a river, or to land on a mountain or hill?\nAnswer: A short enough.\nAnswer:",
+        "perplexity": 7.307906242820959,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "The longest river in the world?\nAnswer: The longest river in the world?\nAnswer: The longest river in the world?\nAnswer: The longest river in the world?\nAnswer: The longest river in the world?",
+        "perplexity": 3.268006806293019,
+        "bleu": 0.8522452865706931,
+        "rougeL": 0.05555555555555555
+      }
+    ]
+  },
+  {
+    "id": "summarization",
+    "prompt": "Summarize this in one sentence: The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It was designed by Gustave Eiffel's company and built between 1887 and 1889 as the entrance to the 1889 World's Fair, and remains the most-visited paid monument in the world.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure built from 1887\u201189 as the 1889 World\u2019s Fair entrance, is now the world\u2019s most\u2011visited paid monument.",
+        "perplexity": 38.25073949526825,
+        "bleu": 10.972048718711068,
+        "rougeL": 0.6909090909090909
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure built from 1887\u201189 as the 1889 World\u2019s Fair entrance, is today the world\u2019s most\u2011visited paid monument.",
+        "perplexity": 40.125520304106956,
+        "bleu": 10.972048718711068,
+        "rougeL": 0.6909090909090909
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure on Paris\u2019s Champ de Mars designed by Gustave Eiffel\u2019s firm and built for the 1889 World\u2019s Fair, is today the world\u2019s most\u2011visited paid monument.",
+        "perplexity": 31.76751913426299,
+        "bleu": 9.060229184435855,
+        "rougeL": 0.65625
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure built from 1887\u201189 as the 1889 World\u2019s Fair entrance, is now the world\u2019s most\u2011visited paid monument.",
+        "perplexity": 38.25073949526825,
+        "bleu": 10.972048718711068,
+        "rougeL": 0.6909090909090909
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "It is a masterpiece of European architecture. It is one of only a handful of such buildings in the world where it is made as of this week. One is not able to make a complete overview of it until he has visited the building and the rest of the construction staff have found out how much they",
+        "perplexity": 20.5157187078579,
+        "bleu": 1.709714016749041,
+        "rougeL": 0.16470588235294117
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It was designed by Gustave Eiffel's company and built between 1887 and 1889 as the entrance to the 1889 World's Fair, and remains the most-visited paid monument",
+        "perplexity": 25.356868272687358,
+        "bleu": 16.203844680185785,
+        "rougeL": 0.5945945945945945
+      }
+    ]
+  },
+  {
+    "id": "summarization_2",
+    "prompt": "Summarize this in one sentence: Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy into chemical energy stored in glucose, using carbon dioxide and water, and releasing oxygen as a byproduct.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Photosynthesis converts light, CO\u2082, and water into glucose and oxygen.",
+        "perplexity": 68.33645932673991,
+        "bleu": 12.577427970340096,
+        "rougeL": 0.5384615384615384
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Photosynthesis converts light, CO\u2082, and water into glucose energy while releasing oxygen.",
+        "perplexity": 107.98460990879168,
+        "bleu": 14.24247428575155,
+        "rougeL": 0.5
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Photosynthesis converts light energy into glucose using CO\u2082 and water, releasing O\u2082 as a by\u2011product.",
+        "perplexity": 116.85377719467688,
+        "bleu": 51.02761099828093,
+        "rougeL": 0.75
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Photosynthesis converts light energy into glucose from carbon dioxide and water, releasing oxygen as a by\u2011product.",
+        "perplexity": 117.76847571011615,
+        "bleu": 72.76817202342096,
+        "rougeL": 0.8484848484848485
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "On the surface, it\u2019s possible to see the process as a function of carbon dioxide (CO2). The resulting carbon dioxide will be released, if it is burned down as quickly as possible, to generate electricity.\nSo there you have it. Now that you can see how it would",
+        "perplexity": 14.83392192716984,
+        "bleu": 2.031036500233013,
+        "rougeL": 0.12307692307692307
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Summarize this in one sentence: Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy into chemical energy stored in glucose, using carbon dioxide and water, and releasing oxygen as a byproduct.\nAnswer: Summarize this in one sentence: Photosynthesis",
+        "perplexity": 33.45090719097624,
+        "bleu": 20.291823717559478,
+        "rougeL": 0.5333333333333333
+      }
+    ]
+  },
+  {
+    "id": "open_ended_essay",
+    "prompt": "Write a short paragraph about the importance of renewable energy.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Renewable energy is crucial because it supplies power without depleting finite resources or emitting greenhouse gases, directly curbing climate change and reducing air pollution. Its decentralized nature enhances energy security, lowers dependence on volatile fossil\u2011fuel markets, and creates jobs in emerging technologies. By transitioning to renewables, societies can achieve sustainable growth while preserving ecosystems for future generations.",
+        "perplexity": 52.93470796379679
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Renewable energy is crucial because it supplies power without depleting finite resources or emitting greenhouse gases, directly curbing climate change while reducing dependence on volatile fossil\u2011fuel markets. Its scalability\u2014from solar rooftops to offshore wind farms\u2014creates jobs, diversifies economies, and improves energy security for communities worldwide.",
+        "perplexity": 55.908101448373635
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Renewable energy is essential because it cuts greenhouse\u2011gas emissions, reduces reliance on finite fossil fuels, and stabilizes long\u2011term energy costs. By tapping abundant sources like wind, solar, and hydro, societies can mitigate climate change, improve air quality, and create resilient, decentralized power grids that bolster economic and energy security.",
+        "perplexity": 30.911691015283786
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Renewable energy is crucial because it supplies power without depleting finite resources or emitting the greenhouse gases that drive climate change, thereby safeguarding the environment for future generations. It also diversifies the energy mix, reduces dependence on volatile fossil\u2011fuel markets, creates jobs in emerging technologies, and enhances energy security by enabling local, decentralized generation. In short, transitioning to renewables is essential for sustainable economic growth and a livable planet.",
+        "perplexity": 37.987642666349515
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "Don't look around, don't write the sentence!",
+        "perplexity": 61.84825326473491
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Write a short paragraph about the importance of renewable energy.\nAnswer: Write a short paragraph about the importance of renewable energy.\nAnswer: Write a short paragraph about the importance of renewable energy.\nAnswer: Write a short paragraph about the importance of renewable energy.",
+        "perplexity": 3.7499916792057064
+      }
+    ]
+  },
+  {
+    "id": "open_ended_creative",
+    "prompt": "Write a short poem about the ocean.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Blue vastness sighs,  \ntide\u2011kissed cliffs hum low\u2014  \nsalt\u2011spun whispers curl,  \nthe horizon swallows the sun.",
+        "perplexity": 263.88700292040716
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Blue vastness sighs,  \ntide\u2011kissed cliffs hum low\u2014  \nsalted breath of earth,  \nendless pulse, forever.",
+        "perplexity": 356.7324377749808
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Blue depth hums,  \nsalt\u2011kissed breath,  \nwaves carve time in foam\u2014  \nthe ocean whispers eternity.",
+        "perplexity": 388.3216355603484
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Blue vastness sighs,  \ntide\u2011etched whispers on silver sand,  \nmoon\u2011lit pulse beneath the swell,  \nwhere horizons swallow sky.",
+        "perplexity": 365.746454386917
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "You already know, if you look at the water, it\u2019 is a pretty well-known water system; it\u2019s water which you should look at for your next life. It\u2019s the water that people can wash off and give you, because you know, that water is",
+        "perplexity": 18.49621397276727
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Write a short poem about the ocean.\nAnswer: Write a short poem about the ocean.\nAnswer: Write a short poem about the ocean.\nAnswer: Write a short poem about the ocean.",
+        "perplexity": 4.462112892075161
+      }
+    ]
+  }
+]

@@ -13,14 +13,17 @@ if ($needsSetup) {
     exit $LASTEXITCODE
 }
 
-# Ensure Ollama is running.
-try {
-    Invoke-RestMethod "http://127.0.0.1:11434/api/tags" -TimeoutSec 2 | Out-Null
-} catch {
-    $ollama = Get-Command ollama -ErrorAction SilentlyContinue
-    if (-not $ollama) { throw "Ollama is missing. Run SETUP_AND_RUN.bat." }
-    Start-Process -FilePath $ollama.Source -ArgumentList "serve" -WindowStyle Hidden
-    Start-Sleep -Seconds 4
+# AETHER calls a cloud AI API (OpenAI, Groq, or Gemini) rather than a local model — warn
+# early if no key looks configured for whichever provider backend\.env selects, since a
+# missing key otherwise only surfaces later as "the AI API isn't reachable" inside the app.
+$envFile = Join-Path $Backend ".env"
+if (Test-Path $envFile) {
+    $envText = Get-Content $envFile -Raw
+    $provider = if ($envText -match 'AETHER_PROVIDER\s*=\s*(\S+)') { $matches[1] } else { "groq" }
+    $keyName = @{ openai = "OPENAI_API_KEY"; groq = "GROQ_API_KEY"; gemini = "GEMINI_API_KEY" }[$provider]
+    if ($keyName -and -not ($envText -match "$keyName\s*=\s*\S+")) {
+        Write-Warning "$keyName looks empty in backend\.env for provider '$provider'. AETHER will start, but AI replies/document generation will fail until a key is set."
+    }
 }
 
 # Open separate terminals so the user can see logs and stop each service.

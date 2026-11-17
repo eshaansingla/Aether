@@ -4,5 +4,11 @@
     "message": "drink water",
     "when": "2026-11-16T12:59:30.282213",
     "status": "due"
+  },
+  {
+    "id": "606f6a55-fac7-4d02-aaf5-99ab720a5ce0",
+    "message": "take a break",
+    "when": "2026-11-17T20:30:46.950825",
+    "status": "due"
   }
 ]

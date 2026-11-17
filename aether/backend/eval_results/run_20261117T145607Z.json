@@ -1,0 +1,47 @@
+[
+  {
+    "id": "factual_capital",
+    "prompt": "What is the capital of France?",
+    "variants": []
+  },
+  {
+    "id": "factual_author",
+    "prompt": "Who wrote Romeo and Juliet?",
+    "variants": []
+  },
+  {
+    "id": "factual_symbol",
+    "prompt": "What is the chemical symbol for gold?",
+    "variants": []
+  },
+  {
+    "id": "factual_planet",
+    "prompt": "What is the largest planet in the solar system?",
+    "variants": []
+  },
+  {
+    "id": "factual_river",
+    "prompt": "What is the longest river in the world?",
+    "variants": []
+  },
+  {
+    "id": "summarization",
+    "prompt": "Summarize this in one sentence: The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It was designed by Gustave Eiffel's company and built between 1887 and 1889 as the entrance to the 1889 World's Fair, and remains the most-visited paid monument in the world.",
+    "variants": []
+  },
+  {
+    "id": "summarization_2",
+    "prompt": "Summarize this in one sentence: Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy into chemical energy stored in glucose, using carbon dioxide and water, and releasing oxygen as a byproduct.",
+    "variants": []
+  },
+  {
+    "id": "open_ended_essay",
+    "prompt": "Write a short paragraph about the importance of renewable energy.",
+    "variants": []
+  },
+  {
+    "id": "open_ended_creative",
+    "prompt": "Write a short poem about the ocean.",
+    "variants": []
+  }
+]

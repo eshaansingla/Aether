@@ -13,7 +13,7 @@ if ($needsSetup) {
     exit $LASTEXITCODE
 }
 
-# AETHER calls a cloud AI API (OpenAI, Groq, or Gemini) rather than a local model — warn
+# AETHER calls a cloud AI API (OpenAI, Groq, or Gemini) rather than a local model - warn
 # early if no key looks configured for whichever provider backend\.env selects, since a
 # missing key otherwise only surfaces later as "the AI API isn't reachable" inside the app.
 $envFile = Join-Path $Backend ".env"

@@ -1,0 +1,464 @@
+[
+  {
+    "id": "factual_capital",
+    "prompt": "What is the capital of France?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Paris.",
+        "perplexity": 47.01607743935072,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "The capital of France is located in the north and south of the Great Wall of Brittany. The French city of Paris contains a large Muslim population, with the largest, most religious groups, which are a mixture of Christians and non-Christians.\n- The capital of France is located in the northern",
+        "perplexity": 14.902699595883718,
+        "bleu": 0.6488583831481832,
+        "rougeL": 0.038461538461538464
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France is France. The capital of France",
+        "perplexity": 1.9901160698637244,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_author",
+    "prompt": "Who wrote Romeo and Juliet?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "William Shakespeare.",
+        "perplexity": 6435.652397856504,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "William Shakespeare.",
+        "perplexity": 6435.652397856504,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "William Shakespeare.",
+        "perplexity": 6435.652397856504,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "William Shakespeare.",
+        "perplexity": 6435.652397856504,
+        "bleu": 55.03212081491043,
+        "rougeL": 1.0
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "\"Dwayne\" (as of March 14, 2016)\nI wrote in a comment to the BBC that it would be interesting if the actor would play the king of the people - but I do think it fits.\nI have a big question, of course!\nWhat has Romeo and Juliet",
+        "perplexity": 28.765818982854388,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Who wrote Romeo and Juliet?\nAnswer: Who wrote Romeo and Juliet?\nAnswer: Who wrote Romeo and Juliet?\nAnswer: Who wrote Romeo and Juliet?\nAnswer: Who wrote Romeo and Juliet?",
+        "perplexity": 3.672825059104268,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_symbol",
+    "prompt": "What is the chemical symbol for gold?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Au.",
+        "perplexity": 202.93152261677875,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "I see that gold comes from a gold ring or a ring, where copper is not present. Silver is the metal the gold is found in (the gold) which they use whenever they have gold.\nHow does gold become an important part in jewelry manufacturing?\nAnswer: It is used by a",
+        "perplexity": 28.06620980599609,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.\nAnswer: Gold is the symbol for gold.",
+        "perplexity": 2.7182272275183466,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_planet",
+    "prompt": "What is the largest planet in the solar system?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Jupiter.",
+        "perplexity": 6712.358035330214,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Jupiter.",
+        "perplexity": 6712.358035330214,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Jupiter.",
+        "perplexity": 6712.358035330214,
+        "bleu": 49.99999999999999,
+        "rougeL": 1.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Jupiter. It's about 11\u202ftimes Earth's diameter and over 300\u202ftimes its mass, making it the biggest planet in our solar system.",
+        "perplexity": 41.06305743605499,
+        "bleu": 1.506189323093867,
+        "rougeL": 0.07999999999999999
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "This is a really big question. The solar system is actually about 15 kph away from Earth, and there isn't a planet up there, and this planet is known as our home. So, I'm guessing that at the moment, if we can build more solar cells, why not send more",
+        "perplexity": 17.937812507244775,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "This is the largest planet in the solar system.\nAnswer: This is the largest planet in the solar system.\nAnswer: This is the largest planet in the solar system.\nAnswer: This is the largest planet in the solar system.\nAnswer: This is the largest planet in the solar",
+        "perplexity": 2.4916002725192317,
+        "bleu": 0.0,
+        "rougeL": 0.0
+      }
+    ]
+  },
+  {
+    "id": "factual_river",
+    "prompt": "What is the longest river in the world?",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "The Nile is traditionally listed as the world\u2019s longest river (about\u202f6,650\u202fkm). Recent measurements, however, suggest the Amazon may be slightly longer (around\u202f7,000\u202fkm), so the answer depends on which data set you follow.",
+        "perplexity": 42.09213943530816,
+        "bleu": 1.6260701149017864,
+        "rougeL": 0.09756097560975609
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "The Amazon River is currently considered the longest river in the world, at roughly\u202f7,050\u202fkm (4,380\u202fmi). The Nile (\u2248\u202f6,650\u202fkm) is a close runner\u2011up.",
+        "perplexity": 48.58278791244859,
+        "bleu": 2.177002209903929,
+        "rougeL": 0.125
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "The Nile has long been considered the world\u2019s longest river (about\u202f6,650\u202fkm). Recent measurements, however, suggest the Amazon may be slightly longer (around\u202f7,050\u202fkm), so the title is contested between the two.",
+        "perplexity": 40.929599447743065,
+        "bleu": 1.7044905731413862,
+        "rougeL": 0.10256410256410257
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "The Nile is traditionally listed as the world\u2019s longest river (about\u202f6,650\u202fkm). Recent studies, however, claim the Amazon\u2019s headwaters give it a length of roughly\u202f7,000\u202fkm, which would make it longer.",
+        "perplexity": 42.33747818118095,
+        "bleu": 1.8374161208658897,
+        "rougeL": 0.10256410256410257
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "A, with the shortest length of the river, and with shortest duration.\nA: It is the longest river that enters the world, and the shortest length of the river from which it should cross.\nIt is the shortest river in the world. It is the shortest river in the world.",
+        "perplexity": 9.607805728340407,
+        "bleu": 0.0,
+        "rougeL": 0.038461538461538464
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "The longest river in the world?\nAnswer: The longest river in the world?\nAnswer: The longest river in the world?\nAnswer: The longest river in the world?\nAnswer: The longest river in the world?\nAnswer: The longest river in the world?",
+        "perplexity": 2.663169892595213,
+        "bleu": 0.7002773917100699,
+        "rougeL": 0.046511627906976744
+      }
+    ]
+  },
+  {
+    "id": "summarization",
+    "prompt": "Summarize this in one sentence: The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It was designed by Gustave Eiffel's company and built between 1887 and 1889 as the entrance to the 1889 World's Fair, and remains the most-visited paid monument in the world.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure built from 1887\u201189 as the 1889 World\u2019s Fair entrance, is now the world\u2019s most\u2011visited paid monument.",
+        "perplexity": 38.25073949526825,
+        "bleu": 10.972048718711068,
+        "rougeL": 0.6909090909090909
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure on Paris\u2019s Champ de Mars designed by Gustave Eiffel\u2019s firm and built for the 1889 World\u2019s Fair, is today the world\u2019s most\u2011visited paid monument.",
+        "perplexity": 31.76751913426299,
+        "bleu": 9.060229184435855,
+        "rougeL": 0.65625
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure built from 1887\u201189 as the 1889 World's Fair entrance, is now the world's most\u2011visited paid monument.",
+        "perplexity": 55.11050141288622,
+        "bleu": 12.584834793909208,
+        "rougeL": 0.6909090909090909
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "The Eiffel Tower, a wrought\u2011iron lattice structure on Paris\u2019s Champ de Mars designed by Gustave Eiffel\u2019s firm and built for the 1889 World\u2019s Fair, is today the world\u2019s most\u2011visited paid monument.",
+        "perplexity": 31.76751913426299,
+        "bleu": 9.060229184435855,
+        "rougeL": 0.65625
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "The Eiffel Tower is a wrought-iron lattice tower that houses the Eiffel Tower (the upper left and right), the Great Eiffel Tower (the upper left and center) and the Big Eiffel Tower (the lower right). As you can see, the tower is",
+        "perplexity": 7.2543980604629645,
+        "bleu": 10.467398290797759,
+        "rougeL": 0.3142857142857143
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris, France. It was designed by Gustave Eiffel's company and built between 1887 and 1889 as the entrance to the 1889 World's Fair, and remains the most-visited paid monument",
+        "perplexity": 25.356868272687358,
+        "bleu": 16.203844680185785,
+        "rougeL": 0.5945945945945945
+      }
+    ]
+  },
+  {
+    "id": "summarization_2",
+    "prompt": "Summarize this in one sentence: Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy into chemical energy stored in glucose, using carbon dioxide and water, and releasing oxygen as a byproduct.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Photosynthesis converts light, CO\u2082, and water into glucose and oxygen.",
+        "perplexity": 68.33645932673991,
+        "bleu": 12.577427970340096,
+        "rougeL": 0.5384615384615384
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Photosynthesis converts light, CO\u2082, and water into glucose energy while releasing O\u2082.",
+        "perplexity": 82.0576904995879,
+        "bleu": 13.17986010507978,
+        "rougeL": 0.42857142857142855
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "(generation failed: Client error '429 Too Many Requests' for url 'https://api.groq.com/openai/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429)",
+        "perplexity": 44.593893448532114,
+        "bleu": 0.6488583831481832,
+        "rougeL": 0.0
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Photosynthesis converts light energy into glucose using CO\u2082 and water, releasing oxygen as a byproduct.",
+        "perplexity": 90.06968501549181,
+        "bleu": 78.09325628873462,
+        "rougeL": 0.9032258064516129
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "Green plants convert light into chemical energy, the process by which green plants, algae, and some bacteria convert light energy into chemical energy stored in glucose, using carbon dioxide and water, and releasing oxygen as a byproduct.\nAnswer: Green plants convert light into chemical energy, the process by which green",
+        "perplexity": 24.724500282672736,
+        "bleu": 17.863245038851694,
+        "rougeL": 0.45454545454545453
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Summarize this in one sentence: Photosynthesis is the process by which green plants, algae, and some bacteria convert light energy into chemical energy stored in glucose, using carbon dioxide and water, and releasing oxygen as a byproduct.\nAnswer: Summarize this in one sentence: Photosynthesis",
+        "perplexity": 33.45090719097624,
+        "bleu": 20.291823717559478,
+        "rougeL": 0.5333333333333333
+      }
+    ]
+  },
+  {
+    "id": "open_ended_essay",
+    "prompt": "Write a short paragraph about the importance of renewable energy.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Renewable energy is crucial because it supplies clean, virtually limitless power while curbing greenhouse\u2011gas emissions, reducing reliance on finite fossil fuels, and mitigating climate change. By diversifying the energy mix, it enhances grid resilience, lowers air\u2011pollution\u2011related health costs, and creates sustainable jobs in emerging technologies, positioning economies for long\u2011term environmental and economic stability.",
+        "perplexity": 47.883093743753925
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Renewable energy is crucial because it cuts greenhouse\u2011gas emissions, curbs climate change, and reduces dependence on finite fossil fuels, ensuring long\u2011term energy security. By harnessing abundant sources like wind, solar, and hydro, it also creates jobs, lowers air\u2011pollution health costs, and stabilizes electricity prices as technology improves and economies of scale drive down costs.",
+        "perplexity": 35.35613358900213
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "Renewable energy is crucial because it cuts greenhouse\u2011gas emissions, curbs climate change, and reduces dependence on finite fossil fuels, safeguarding energy security for future generations. By harnessing abundant sources like wind, solar, and hydro, we create jobs, lower air\u2011pollution health costs, and foster economic resilience as technologies become cheaper and more widely deployed.",
+        "perplexity": 32.142881209604894
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "(generation failed: Client error '429 Too Many Requests' for url 'https://api.groq.com/openai/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429)",
+        "perplexity": 44.593893448532114
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "I think if you are a science school I can see that the real value of solar is getting done by providing you with so little in-depth resources that will help you improve your life as a scientist and a scientist.\nAnswer: Thank you! This is one of my favorite science related stories in",
+        "perplexity": 25.27957910043538
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Write a short paragraph about the importance of renewable energy.\nAnswer: Write a short paragraph about the importance of renewable energy.\nAnswer: Write a short paragraph about the importance of renewable energy.\nAnswer: Write a short paragraph about the importance of renewable energy.",
+        "perplexity": 3.7499916792057064
+      }
+    ]
+  },
+  {
+    "id": "open_ended_creative",
+    "prompt": "Write a short poem about the ocean.",
+    "variants": [
+      {
+        "key": "greedy",
+        "label": "Greedy decoding",
+        "text": "Blue vastness sighs,  \ntide\u2011kissed cliffs hum low\u2014  \nsalt\u2011spun whispers curl,  \nthe horizon swallows the sun.",
+        "perplexity": 263.88700292040716
+      },
+      {
+        "key": "low_temp",
+        "label": "Low-temperature sampling",
+        "text": "Blue depths whisper,  \ntide\u2011kissed horizons pulse,  \nfoam crowns the restless shore\u2014  \nthe ocean breathes eternity.",
+        "perplexity": 266.81969320553077
+      },
+      {
+        "key": "nucleus",
+        "label": "Nucleus (top-p) sampling",
+        "text": "(generation failed: Client error '429 Too Many Requests' for url 'https://api.groq.com/openai/v1/chat/completions'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429)",
+        "perplexity": 44.593893448532114
+      },
+      {
+        "key": "high_temp",
+        "label": "High-temperature random sampling",
+        "text": "Waves whisper secrets on silver skin,  \nDepths pulse with ancient, unseen hymn.  \nMoon\u2011lit tides pull hearts to roam,  \nIn the ocean\u2019s sigh we find our home.",
+        "perplexity": 406.03377587889594
+      },
+      {
+        "key": "top_k",
+        "label": "Top-k sampling",
+        "text": "Why do you consider the water is not on a shelf?\nAnswer: Because of the water being in fact floating around the world.\nAnswer: No!\nAnswer: The ocean is not in fact there's a lake on water, the water is still floating under it. The only way that",
+        "perplexity": 19.984833472725406
+      },
+      {
+        "key": "beam",
+        "label": "Beam search",
+        "text": "Write a short poem about the ocean.\nAnswer: Write a short poem about the ocean.\nAnswer: Write a short poem about the ocean.\nAnswer: Write a short poem about the ocean.\nAnswer: Write a short poem about the ocean.",
+        "perplexity": 3.2581440002277153
+      }
+    ]
+  }
+]

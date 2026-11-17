@@ -15,10 +15,10 @@ def looks_factual(text: str) -> bool:
 
 # "Who is the founder of X" leaves "the founder of X" as the naive subject, which
 # DuckDuckGo's instant-answer lookup can't match (it needs the entity's own name, not a
-# descriptive phrase about it) — so the lookup silently returns nothing and the model is
+# descriptive phrase about it) - so the lookup silently returns nothing and the model is
 # left to invent a specific name with no grounding at all. Pulling the actual entity out
 # from behind "<role/attribute> of" still gets a real abstract to check the model's claim
-# against, even though that abstract may not itself state who the role belongs to — the
+# against, even though that abstract may not itself state who the role belongs to - the
 # chat system prompt already tells the model to say so plainly rather than guess when
 # the given material doesn't cover the question.
 _RELATIONAL_PATTERN = re.compile(
@@ -48,7 +48,7 @@ def _extract_subject(text: str) -> str:
 # (essay/report/article/...), not story/poem/song/script: grounding those in a
 # Wikipedia-style abstract would push the model to write a dry factual summary instead
 # of the creative piece actually asked for. A request with no such topic (a personal
-# letter, a to-do list, "my dog") has nothing to look up — returning None is correct
+# letter, a to-do list, "my dog") has nothing to look up - returning None is correct
 # there, not a failure, since fabricating a lookup subject out of thin air would ground
 # the answer in the wrong thing.
 _DOC_TOPIC_PATTERN = re.compile(
@@ -75,18 +75,18 @@ def extract_document_topic(instruction: str) -> str | None:
     return topic or None
 
 def lookup_subject(subject: str) -> str | None:
-    # A small local model has no real knowledge base — it generates plausible-sounding
+    # A small local model has no real knowledge base - it generates plausible-sounding
     # specifics (dates, locations, accrediting bodies) whether or not they're true. A
     # quick, keyless lookup gives something real to ground the answer in instead,
     # without the latency cost of switching to a bigger local model.
     #
     # Wikipedia's own API currently hard-blocks non-browser traffic outright (its
-    # robot policy rejects requests regardless of a compliant User-Agent — see
+    # robot policy rejects requests regardless of a compliant User-Agent - see
     # https://phabricator.wikimedia.org/T400119), so this goes through DuckDuckGo's
     # Instant Answer API instead, which sources the same Wikipedia abstracts without
     # that block, and is a documented public API meant for exactly this kind of use.
     # A subject this short (a single letter, "it", a stray initial) is never going to be
-    # the real name of the thing being asked about — DuckDuckGo will still happily
+    # the real name of the thing being asked about - DuckDuckGo will still happily
     # resolve it to an unrelated dictionary/encyclopedia entry (e.g. "x" -> the letter X),
     # and that mismatched entry is worse than no grounding at all, since it reads like a
     # real, on-topic answer right up until it obviously isn't.
@@ -105,7 +105,7 @@ def lookup_subject(subject: str) -> str | None:
         text = (data.get("AbstractText") or "").strip()
         source = data.get("AbstractSource") or "web"
         # A short abstract (or none at all, on a more obscure topic) leaves the model
-        # with too little to ground a whole essay/report in — DuckDuckGo's RelatedTopics
+        # with too little to ground a whole essay/report in - DuckDuckGo's RelatedTopics
         # carry extra one-line facts about the same subject that fill that gap cheaply,
         # without a second network round trip.
         related = [
@@ -115,7 +115,7 @@ def lookup_subject(subject: str) -> str | None:
         ][:5]
         if not text and not related:
             return None
-        parts = [f'{source} — "{subject}": {text}'] if text else [f'"{subject}":']
+        parts = [f'{source} - "{subject}": {text}'] if text else [f'"{subject}":']
         parts.extend(f"- {line}" for line in related)
         return "\n".join(parts)
     except Exception:
@@ -125,7 +125,7 @@ def wikipedia_summary(query: str) -> str | None:
     return lookup_subject(_extract_subject(query))
 
 # An essay/report topic is often phrased as "the causes of X"/"the history of X" rather
-# than X's own name — DuckDuckGo's instant-answer lookup needs the name itself ("World
+# than X's own name - DuckDuckGo's instant-answer lookup needs the name itself ("World
 # War 1" matches; "the causes of World War 1" does not, even though the topic is
 # obviously the same war). Falling back to the stripped entity on a miss catches this
 # without losing the more specific phrasing as the first attempt.

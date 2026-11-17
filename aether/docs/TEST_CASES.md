@@ -21,6 +21,12 @@ Record actual results on the target Windows PC. A test is not considered passed 
 | T15 | Remove/blank the configured provider's API key, send a command | App reports the AI API is unreachable rather than failing silently or hanging |
 | T16 | Run `python scripts/evaluate_generation.py` with the backend up | Completes, writes a timestamped run under `backend/eval_results/`, refreshes `latest_summary.md` |
 | T17 | Switch `AETHER_PROVIDER` in `.env` (e.g. groq → openai) and restart the backend | `/api/status` reflects the new provider/model without code changes |
+| T18 | `write essay on my cat` | All 6 cards arrive (streamed in progressively); beam/top-k show real, readable text for every one of their 5 candidates - none render blank |
+| T19 | `write an email to my professor asking for an extension on my project deadline` | All 6 cards arrive; picking any candidate from beam/top-k/nucleus (not just the top-ranked default) finalizes that exact candidate's text |
+| T20 | `make a poster announcing our college tech fest` | All 6 cards arrive; non-ASCII punctuation in cloud output (curly quotes, em dashes, emoji) renders correctly, not as mojibake |
+| T21 | `what is the tallest mountain in the world?` | All 6 cards arrive; grounded cloud presets agree on Everest; beam/top-k show visibly rougher but non-empty text |
+| T22 | `solve this: if a train travels 60 km in 45 minutes, what is its speed in km/h?` | All 6 cards arrive; low-temperature/greedy/nucleus show correct worked arithmetic (80 km/h) |
+| T23 | Fire 5 of T18-T22 at once (concurrent requests) | No task's poll ever 500s; every task eventually reaches all 6 variants or a plain "(the AI provider is rate-limited right now...)" message on individual cards - never a raw exception string, and never a frozen/incomplete card list |
 
 ## Test record template
 - Date:

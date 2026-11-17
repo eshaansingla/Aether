@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
 
 class VariantSelect(BaseModel):
     variant_key: str = Field(min_length=1, max_length=40)
+    candidate_index: Optional[int] = Field(default=None, ge=0, le=20)
 
 class TaskStep(BaseModel):
     name: str

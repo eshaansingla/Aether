@@ -1,4 +1,4 @@
-AETHER — START HERE
+AETHER - START HERE
 
 FIRST TIME ONLY:
 1. Extract the complete ZIP to a normal folder, e.g. C:\AETHER.
@@ -14,7 +14,7 @@ EVERY TIME AFTER:
 Double-click START_AETHER.bat.
 
 IMPORTANT:
-- Initial setup requires internet, as does every AI reply afterward — AETHER calls a
+- Initial setup requires internet, as does every AI reply afterward - AETHER calls a
   cloud AI API (OpenAI, Groq, or Gemini) for text generation; it does not run a model
   locally.
 - Your API key lives only in backend\.env on this machine and is never committed to git.

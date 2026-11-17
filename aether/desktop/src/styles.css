@@ -9,7 +9,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{
 ::-webkit-scrollbar-thumb:hover{background:var(--faint)}
 ::-webkit-scrollbar-track{background:transparent}
 
-/* Warm, paper-like palette with a clay accent — dark mode is warm charcoal, not neutral gray. */
+/* Warm, paper-like palette with a clay accent - dark mode is warm charcoal, not neutral gray. */
 .app{
   --bg:#262624;--sidebar:#2b2a28;--panel:#30302e;--panel2:#34332f;--line:#43413c;
   --text:#f2efe9;--muted:#b3afa6;--faint:#847f74;
@@ -187,6 +187,17 @@ button.task-file:hover span{color:var(--text)}
 .variant-metrics{display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:var(--faint);border-top:1px solid var(--line);padding-top:8px;margin-top:2px;cursor:help}
 .variant-metrics .good{color:#5a9c6e}
 .variant-metrics .warn{color:#c98a4b}
+.candidates-disclosure{font-size:11.5px;color:var(--muted)}
+.candidates-disclosure summary{cursor:pointer;color:var(--accent);list-style:none}
+.candidates-disclosure summary::-webkit-details-marker{display:none}
+.candidates-disclosure summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+.candidates-disclosure[open] summary::before{transform:rotate(90deg)}
+.candidates-list{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.candidates-list li{display:flex;gap:8px;align-items:baseline;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}
+.candidate-use{margin-left:auto;flex-shrink:0;display:flex;align-items:center;gap:3px;font-size:10px;padding:3px 7px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+.candidate-use:hover{background:var(--hover);border-color:var(--accent)}
+.candidate-score{font-family:ui-monospace,monospace;font-size:10px;color:var(--faint);flex-shrink:0;min-width:48px}
+.candidate-text{font-size:11.5px;line-height:1.5;color:var(--text);overflow-wrap:anywhere}
 .new-item-btn{display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);font-size:12.5px}
 .new-item-btn:hover{background:var(--hover);border-color:var(--accent)}
 .data-card{display:flex;align-items:center;gap:13px;padding:15px 16px;border-radius:12px;margin-bottom:6px;background:transparent}

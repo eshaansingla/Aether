@@ -9,7 +9,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// The model's replies are plain Markdown (tables, bold, headings, lists) — rendering them
+// The model's replies are plain Markdown (tables, bold, headings, lists) - rendering them
 // as raw text (as a plain {content} string would) shows literal "**", "|---|", "##"
 // characters instead of formatting. remark-gfm adds table/strikethrough support on top of
 // the base CommonMark react-markdown already handles, matching what a model actually
@@ -18,11 +18,28 @@ function Markdown({ children }: { children: string }) {
   return <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>;
 }
 
+// top_k, beam, and nucleus are the 3 strategies that actually produce more than one
+// candidate internally (beam tracks several hypotheses, top_k/nucleus are stochastic) - 
+// the other 3 (greedy, low-temp, high-temp) are single deterministic/one-shot cloud
+// calls with nothing else to rank, so they never carry a `candidates` list at all.
+function CandidatesDisclosure({v,onUseCandidate}:{v:Variant;onUseCandidate?:(index:number)=>void}){
+  if(!v.candidates||v.candidates.length<2)return null;
+  return <details className="candidates-disclosure">
+    <summary title={v.candidates_explanation}>{v.candidates.length} ranked candidates</summary>
+    <ol className="candidates-list">{v.candidates.map((c,i)=><li key={i}>
+      <span className="candidate-score">{c.score!=null?c.score.toFixed(2):"-"}</span>
+      <span className="candidate-text">{c.text}</span>
+      {onUseCandidate&&<button className="candidate-use" onClick={()=>onUseCandidate(i)}><Check size={10}/> Use</button>}
+    </li>)}</ol>
+  </details>;
+}
+
 const API = "http://127.0.0.1:8000";
 const WAKE_PHRASES = ["hi aether","hey aether","hi ether","hey ether","hi eather","hey eather"];
 type Step = {name:string;status:string;detail:string};
 type VariantMetrics = {perplexity:number|null;perplexity_explanation:string;grounding_check:{supported:boolean;relevant:boolean}|null;grounding_check_explanation:string;similarity:{bleu:number;rougeL:number}|null;similarity_explanation:string};
-type Variant = {key:string;label:string;kind:"cloud"|"local";temperature?:number;top_p?:number;top_k?:number;num_beams?:number;note:string;text:string;metrics:VariantMetrics};
+type Candidate = {text:string;score:number|null};
+type Variant = {key:string;label:string;kind:"cloud"|"local";temperature?:number;top_p?:number;top_k?:number;num_beams?:number;note:string;text:string;metrics:VariantMetrics;candidates?:Candidate[];candidates_explanation?:string};
 type Task = {task_id:string;instruction:string;status:string;message:string;steps:Step[];output_path?:string;download_url?:string;error?:string;result?:any;variants?:Variant[]|null;chosen_variant?:string|null};
 type Attachment = {name:string;text:string};
 type Message = {id:string;role:"user"|"assistant";content:string;task?:Task;createdAt:number;newAttachments?:string[]};
@@ -82,7 +99,7 @@ export default function App(){
   const wakeBusyRef=useRef(false);
   // A plain ref, checked synchronously, so two near-simultaneous triggers (e.g. the
   // voice auto-send timer firing right as the user also presses Enter) can't both pass
-  // the "not already sending" check before React state has re-rendered — `busy` state
+  // the "not already sending" check before React state has re-rendered - `busy` state
   // alone lags a frame behind and let both calls through, filing the message twice.
   const sendingRef=useRef(false);
   const activeThread=threads.find(t=>t.id===activeId)||null;
@@ -90,7 +107,7 @@ export default function App(){
 
   // All mutations go through the functional setState form so that async callbacks
   // (fetch responses, poll ticks) always apply on top of the latest state instead of
-  // a stale closure captured before the update — a stale closure here previously made
+  // a stale closure captured before the update - a stale closure here previously made
   // newly-sent messages disappear as soon as the next async patch landed.
   function updateThreads(updater:Thread[]|((prev:Thread[])=>Thread[])){
     setThreads(prev=>{
@@ -133,12 +150,23 @@ export default function App(){
   async function runPlayground(){
     const prompt=pgPrompt.trim();
     if(!prompt||pgBusy)return;
-    setPgBusy(true);setPgVariants(null);setPgContext(null);
+    setPgBusy(true);setPgVariants([]);setPgContext(null);
     try{
       const r=await fetch(`${API}/api/compare`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:prompt,history:[],attachments:[]})});
       if(!r.ok)throw new Error("The comparison request failed.");
-      const d=await r.json();
-      setPgVariants(d.variants);setPgContext(d.context||null);
+      const started=await r.json();
+      setPgContext(started.context||null);
+      // Cards appear as each of the 6 strategies finishes rather than all at once at
+      // the end, matching the same fastest-first behavior as the main chat picker.
+      let done=false;
+      while(!done){
+        await new Promise(resolve=>setTimeout(resolve,700));
+        const poll=await fetch(`${API}/api/compare/${started.job_id}`);
+        if(!poll.ok)throw new Error("Lost track of that comparison job.");
+        const job=await poll.json();
+        setPgVariants(job.variants||[]);
+        if(job.status==="done")done=true;
+      }
     }catch(e:any){notify(e.message)}
     finally{setPgBusy(false)}
   }
@@ -260,6 +288,7 @@ export default function App(){
   }
   async function pollTask(threadId:string,messageId:string,taskId:string){
     let finished=false;
+    let unblocked=false;
     while(!finished){
       await new Promise(resolve=>setTimeout(resolve,900));
       try{
@@ -270,17 +299,25 @@ export default function App(){
           : t.status==="failed" ? `I couldn't complete that: ${t.error||t.message}`
           : t.status==="awaiting_selection" ? "" : "I'm working on that.";
         patchMessage(threadId,messageId,{content:text,task:t});
-        // awaiting_selection isn't a terminal state the way completed/failed are, but
-        // there's nothing left to poll for until the user picks a variant — the
-        // composer unblocks here, and selectVariant() carries the task the rest of the
-        // way to completed once they do.
-        if(t.status==="completed"||t.status==="failed"||t.status==="awaiting_selection"){finished=true;setBusy(false);sendingRef.current=false;refresh()}
-      }catch(e:any){patchMessage(threadId,messageId,{content:`Task status error: ${e.message}`});finished=true;setBusy(false);sendingRef.current=false}
+        // The composer unblocks as soon as there's something to look at (awaiting
+        // selection, even with 0 of 6 variants in yet) rather than waiting for every
+        // strategy to finish - the user can start a new message while this one keeps
+        // streaming cards in behind it. The poll loop itself, though, keeps running
+        // until every strategy has actually arrived (or the user picks one, which
+        // flips status to completed) - stopping it early at the first
+        // awaiting_selection tick would freeze the card list at whatever had finished
+        // by then and silently drop the rest.
+        if(!unblocked&&(t.status==="awaiting_selection"||t.status==="completed"||t.status==="failed")){
+          unblocked=true;setBusy(false);sendingRef.current=false;
+        }
+        const allArrived=t.status==="awaiting_selection"&&t.variants&&t.variants.length>=6;
+        if(t.status==="completed"||t.status==="failed"||allArrived){finished=true;refresh()}
+      }catch(e:any){patchMessage(threadId,messageId,{content:`Task status error: ${e.message}`});finished=true;if(!unblocked){setBusy(false);sendingRef.current=false}}
     }
   }
-  async function selectVariant(threadId:string,messageId:string,taskId:string,variantKey:string){
+  async function selectVariant(threadId:string,messageId:string,taskId:string,variantKey:string,candidateIndex?:number){
     try{
-      const r=await fetch(`${API}/api/tasks/${taskId}/select`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({variant_key:variantKey})});
+      const r=await fetch(`${API}/api/tasks/${taskId}/select`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({variant_key:variantKey,candidate_index:candidateIndex})});
       const t:Task=await r.json();if(!r.ok)throw new Error((t as any).detail||"Could not finalize that choice.");
       const text=t.status==="completed"?(t.result?.message||"Done."):`I couldn't complete that: ${t.error||t.message}`;
       patchMessage(threadId,messageId,{content:text,task:t});
@@ -311,11 +348,11 @@ export default function App(){
   function stopRecording(){mediaRef.current?.stop()}
   function speak(text:string){if(!("speechSynthesis" in window)){notify("Local system speech is unavailable.");return}window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=1;window.speechSynthesis.speak(u)}
   // A plain <a download href="http://other-origin/..."> only triggers an actual download
-  // in Chromium when the server sends Content-Disposition: attachment — otherwise the
+  // in Chromium when the server sends Content-Disposition: attachment - otherwise the
   // browser just navigates there. Inside the Electron window that has no address bar or
   // back button, that navigation strands the user looking at a raw .docx with no way back
   // to the app. Fetching as a blob and downloading via a same-origin blob: URL sidesteps
-  // that entirely — the window's location never changes.
+  // that entirely - the window's location never changes.
   async function downloadFile(url:string,filename:string){
     try{
       const r=await fetch(url);
@@ -329,7 +366,7 @@ export default function App(){
     }catch(e:any){notify(e.message)}
   }
   // Documents AETHER generates open for viewing/editing right here instead of only being
-  // a download link — this is also what makes the Electron "stuck on a raw file" problem
+  // a download link - this is also what makes the Electron "stuck on a raw file" problem
   // moot for the common case: the content never leaves the SPA at all.
   async function openDocument(outputPath:string){
     const name=outputPath.split(/[\\/]/).pop()||"";
@@ -355,7 +392,7 @@ export default function App(){
   // Local wake-word listening: every ~3s, grabs a short clip and transcribes it with the
   // same local faster-whisper endpoint used for manual recording. If "Hi AETHER" (or a
   // close mishearing of it) shows up, the next ~5s is captured as the actual command and
-  // sent automatically. Everything stays on-device, same as manual voice input — this just
+  // sent automatically. Everything stays on-device, same as manual voice input - this just
   // polls faster-whisper instead of using a cloud wake-word/streaming service.
   function recordClip(ms:number,stream:MediaStream):Promise<Blob>{
     return new Promise((resolve,reject)=>{
@@ -452,7 +489,7 @@ export default function App(){
           {messages.length===0?<div className="welcome">
             <div className="welcome-mark">A</div>
             <h1>Good to see you.</h1>
-            <p>Your assistant — file actions and tasks run on your device, replies are generated via a cloud AI API.</p>
+            <p>Your assistant - file actions and tasks run on your device, replies are generated via a cloud AI API.</p>
             <div className="prompt-list">{starterPrompts.map(({icon:Icon,title,prompt})=><button className="prompt-pill" key={title} onClick={()=>setInput(prompt)}><Icon size={15}/><span>{title}</span></button>)}</div>
             <div className="welcome-foot">Notes, reminders, files, and app launching stay on this device.</div>
           </div>:<div className="conversation">{messages.map(m=><div className={`message-row ${m.role}`} key={m.id}>
@@ -465,14 +502,15 @@ export default function App(){
                 :<>
                   {m.task?.status==="awaiting_selection"&&m.task.variants
                     ?<div className="variant-picker">
-                      <p className="variant-picker-hint">{m.task.variants.length} sampling strategies ran for this reply — pick the one you want to keep.</p>
+                      <p className="variant-picker-hint">{m.task.variants.length} sampling strategies ran for this reply - pick the one you want to keep.</p>
                       <div className="pg-grid">{m.task.variants.map(v=><article className="pg-card" key={v.key}>
                         <div className="pg-card-head"><b>{v.label}</b><button className="modal-primary variant-use" onClick={()=>selectVariant(activeId!,m.id,m.task!.task_id,v.key)}><Check size={12}/> Use this</button></div>
                         <div className="pg-card-params">{v.kind==="cloud"?`temperature=${v.temperature} · top_p=${v.top_p}`:v.key==="top_k"?`top_k=${v.top_k} (local model)`:`num_beams=${v.num_beams} (local model)`}</div>
                         <p className="pg-card-note">{v.note}</p>
                         <div className="pg-card-text"><Markdown>{v.text}</Markdown></div>
+                        <CandidatesDisclosure v={v} onUseCandidate={(i)=>selectVariant(activeId!,m.id,m.task!.task_id,v.key,i)}/>
                         <div className="variant-metrics">
-                          <span title={v.metrics.perplexity_explanation}>Perplexity: {v.metrics.perplexity!=null?v.metrics.perplexity.toFixed(1):"—"}</span>
+                          <span title={v.metrics.perplexity_explanation}>Perplexity: {v.metrics.perplexity!=null?v.metrics.perplexity.toFixed(1):" - "}</span>
                           {v.metrics.grounding_check&&<span className={v.metrics.grounding_check.supported?"good":"warn"} title={v.metrics.grounding_check_explanation}>{v.metrics.grounding_check.supported?"Grounded in source":"Not confirmed by source"}</span>}
                           {v.metrics.similarity&&<span title={v.metrics.similarity_explanation}>BLEU: {v.metrics.similarity.bleu.toFixed(1)} · ROUGE-L: {v.metrics.similarity.rougeL.toFixed(2)}</span>}
                         </div>
@@ -527,20 +565,21 @@ export default function App(){
           <div className="pg-card-params">{v.kind==="cloud"?`temperature=${v.temperature} · top_p=${v.top_p} (cloud API)`:v.key==="top_k"?`top_k=${v.top_k} (local model)`:`num_beams=${v.num_beams} (local model)`}</div>
           <p className="pg-card-note">{v.note}</p>
           <div className="pg-card-text"><Markdown>{v.text}</Markdown></div>
+          <CandidatesDisclosure v={v}/>
           <div className="variant-metrics">
-            <span title={v.metrics.perplexity_explanation}>Perplexity: {v.metrics.perplexity!=null?v.metrics.perplexity.toFixed(1):"—"}</span>
+            <span title={v.metrics.perplexity_explanation}>Perplexity: {v.metrics.perplexity!=null?v.metrics.perplexity.toFixed(1):" - "}</span>
             {v.metrics.grounding_check&&<span className={v.metrics.grounding_check.supported?"good":"warn"} title={v.metrics.grounding_check_explanation}>{v.metrics.grounding_check.supported?"Grounded in source":"Not confirmed by source"}</span>}
             {v.metrics.similarity&&<span title={v.metrics.similarity_explanation}>BLEU: {v.metrics.similarity.bleu.toFixed(1)} · ROUGE-L: {v.metrics.similarity.rougeL.toFixed(2)}</span>}
           </div>
         </article>)}</div>}
         <div className="pg-limits-note">
-          <b>How top-k and beam search are computed differently from the other 4.</b> Neither is exposed by any hosted chat-completions API (OpenAI, Groq, Gemini) — both require direct access to the model's raw per-token logit distribution during decoding, which a commercial inference API intentionally doesn't expose (confirmed against Groq: <code>top_k</code> → 400 "unsupported property"; <code>n&gt;1</code> → 400 "must be at most 1"). So those two run locally instead, on a small non-instruction-tuned model (distilgpt2) via Hugging Face Transformers' own <code>generate()</code> loop, which does support them directly. Expect rougher output from those two — that's the local model's limits, not a bug.
+          <b>How top-k and beam search are computed differently from the other 4.</b> Neither is exposed by any hosted chat-completions API (OpenAI, Groq, Gemini) - both require direct access to the model's raw per-token logit distribution during decoding, which a commercial inference API intentionally doesn't expose (confirmed against Groq: <code>top_k</code> → 400 "unsupported property"; <code>n&gt;1</code> → 400 "must be at most 1"). So those two run locally instead, on a small non-instruction-tuned model (distilgpt2) via Hugging Face Transformers' own <code>generate()</code> loop, which does support them directly. Expect rougher output from those two - that's the local model's limits, not a bug.
         </div>
       </section>}
       {page==="settings"&&<section className="utility-page settings-page"><div className="page-heading"><div><span className="overline">Preferences</span><h1>Settings</h1><p>Manage the AI runtime and application.</p></div></div>
-        <div className="settings-card"><div className="settings-icon"><Cpu size={20}/></div><div className="settings-body"><b>AI model</b><p>Replies and document generation run through a cloud AI API (OpenAI, Groq, or Gemini — set with AETHER_PROVIDER in the backend's .env). Requires an API key for that provider and an internet connection.</p><div className="settings-line"><span>API</span><b className={apiOnline?"good":""}>{apiOnline?"Connected":"Not reachable"}</b></div><div className="settings-line"><span>Configured model</span><b>{model}</b></div></div></div>
+        <div className="settings-card"><div className="settings-icon"><Cpu size={20}/></div><div className="settings-body"><b>AI model</b><p>Replies and document generation run through a cloud AI API (OpenAI, Groq, or Gemini - set with AETHER_PROVIDER in the backend's .env). Requires an API key for that provider and an internet connection.</p><div className="settings-line"><span>API</span><b className={apiOnline?"good":""}>{apiOnline?"Connected":"Not reachable"}</b></div><div className="settings-line"><span>Configured model</span><b>{model}</b></div></div></div>
         <div className="settings-card"><div className="settings-icon"><AudioLines size={20}/></div><div className="settings-body"><b>Local voice</b><p>Speech recognition uses faster-whisper locally. Read-aloud uses the operating system's available speech voices.</p><div className="settings-line"><span>Speech recognition</span><b>faster-whisper · base</b></div><div className="settings-line"><span>Text to speech</span><b>System speech engine</b></div><div className="settings-line"><span>Activation word</span><b className={wakeEnabled?"good":""}>{wakeEnabled?(wakeStatus==="capturing"?"Listening to your command…":"On · say “Hi AETHER”"):"Off"}</b></div><button className="wake-toggle" onClick={()=>setWakeEnabled(v=>!v)}><Mic size={14}/>{wakeEnabled?"Turn off “Hi AETHER”":"Turn on “Hi AETHER”"}</button><p className="settings-hint">When on, AETHER keeps a short rolling local recording and checks it for the phrase "Hi AETHER"; everything after it is sent as your command. This uses more CPU and the microphone continuously.</p></div></div>
-        <div className="settings-card"><div className="settings-icon"><ShieldCheck size={20}/></div><div className="settings-body"><b>Privacy & safety</b><p>File actions, notes, and reminders are processed locally. Chat messages and document requests are sent to OpenAI's API to generate a reply. AETHER uses an allowlist for application launching and does not expose arbitrary shell execution.</p><div className="settings-line"><span>AI API key</span><b className={apiOnline?"good":"warn"}>{apiOnline?"Configured":"Required — set in backend .env"}</b></div><div className="settings-line"><span>Task database</span><b>SQLite · local</b></div></div></div>
+        <div className="settings-card"><div className="settings-icon"><ShieldCheck size={20}/></div><div className="settings-body"><b>Privacy & safety</b><p>File actions, notes, and reminders are processed locally. Chat messages and document requests are sent to OpenAI's API to generate a reply. AETHER uses an allowlist for application launching and does not expose arbitrary shell execution.</p><div className="settings-line"><span>AI API key</span><b className={apiOnline?"good":"warn"}>{apiOnline?"Configured":"Required - set in backend .env"}</b></div><div className="settings-line"><span>Task database</span><b>SQLite · local</b></div></div></div>
       </section>}
     </main>
 

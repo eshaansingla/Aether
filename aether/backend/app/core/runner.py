@@ -8,7 +8,7 @@ from app.tools.files import create_document
 from app.tools.imaging import generate_image
 from app.tools.knowledge import looks_factual, wikipedia_summary, extract_document_topic, lookup_topic
 from app.core.database import save_task
-from app.core.variants import generate_all_variants, generate_all_document_variants
+from app.core.variants import stream_variants
 
 TASKS = {}
 ALLOWED_DOC_FORMATS = {"docx", "txt", "md", "csv", "json", "py", "js", "ts", "html", "css", "java", "c", "cpp", "sh", "yaml", "xml"}
@@ -39,8 +39,8 @@ _DOWN_WORDS = r"(?:decrease|dec|lower|reduce|turn\s*down|down|less|dim|min(?:imu
 _SET_WORDS = r"(?:set|change)"
 
 def _parse_system_command(instruction):
-    # A tiny classifier model is unreliable at exactly this kind of thing — picking the
-    # right one of several similar numeric system controls and pulling out a percentage —
+    # A tiny classifier model is unreliable at exactly this kind of thing - picking the
+    # right one of several similar numeric system controls and pulling out a percentage - 
     # so these are matched directly against the raw text instead of trusting its JSON
     # output. This is what caught "decrease brightness" being misrouted as a volume
     # command: "brightness" was never in the model's limited command vocabulary at all.
@@ -102,7 +102,7 @@ async def _run(task, history=None, attachments=None):
         action = plan.get("action","general")
         sys_command, sys_amount = _parse_system_command(task["instruction"])
         if sys_command:
-            # Overrides whatever the classifier picked — a direct regex match on "volume"/
+            # Overrides whatever the classifier picked - a direct regex match on "volume"/
             # "brightness"/"mute"/etc. in the user's own words is strictly more trustworthy
             # than the small model's guess for this fixed, unambiguous set of commands.
             action = "system_control"
@@ -119,7 +119,7 @@ async def _run(task, history=None, attachments=None):
             result = await asyncio.to_thread(open_app, plan.get("app") or "")
         elif action == "play_music":
             # The classifier model sometimes drops the song/artist into "query" as an
-            # empty string on an unusual phrasing (e.g. "on spotify play X") — fall back
+            # empty string on an unusual phrasing (e.g. "on spotify play X") - fall back
             # to pulling it straight out of the raw instruction so a request never
             # silently degrades into "opened the app with no search at all".
             query = (plan.get("query") or "").strip()
@@ -165,32 +165,26 @@ async def _run(task, history=None, attachments=None):
                 if topic:
                     doc_context = await asyncio.to_thread(lookup_topic, topic)
             # A classifier that skips "title" shouldn't make every untitled document land
-            # on the same generic filename — falling back to words from the request itself
+            # on the same generic filename - falling back to words from the request itself
             # (still deduplicated by create_document/safe_output_path as a second layer)
             # keeps unrelated documents from colliding under one name in the first place.
             fallback_title = " ".join(plan["content"].split()[:8])
-            variants = await generate_all_document_variants(plan["content"], fmt, doc_context)
-            if not any(v["text"] and not v["text"].startswith("(generation failed") for v in variants):
-                raise RuntimeError("The AI model returned an empty document.")
-            task["variants"] = variants
             task["_pending"] = {"kind": "write_document", "fmt": fmt, "title": plan.get("title") or fallback_title}
-            await _await_selection(task)
+            await _stream_into_task(task, plan["content"], None, doc_context, is_document=True, fmt=fmt, instruction=plan["content"])
             return
         elif action == "general":
             # A small local model has no real knowledge of its own and will confidently
             # state wrong specifics for a factual question (wrong founding year, wrong
             # city, an invented accreditation body) rather than admit uncertainty. A
-            # quick, keyless Wikipedia lookup grounds the answer in something real —
+            # quick, keyless Wikipedia lookup grounds the answer in something real - 
             # cheap enough (under a couple seconds) not to cost the speed a bigger local
             # model would. Skipped when the user already attached their own document,
             # since that's the more authoritative source for the question.
             chat_context = context
             if not chat_context and looks_factual(task["instruction"]):
                 chat_context = await asyncio.to_thread(wikipedia_summary, task["instruction"])
-            variants = await generate_all_variants(task["instruction"], history, chat_context)
-            task["variants"] = variants
             task["_pending"] = {"kind": "general"}
-            await _await_selection(task)
+            await _stream_into_task(task, task["instruction"], history, chat_context, is_document=False)
             return
         else:
             result = {"message":plan.get("response") or "I understood your request, but no action was needed."}
@@ -212,36 +206,64 @@ async def _run(task, history=None, attachments=None):
                 step.update(status="failed",detail=str(exc))
     _persist(task)
 
-async def _await_selection(task):
+async def _stream_into_task(task, message, history, context, *, is_document, fmt=None, instruction=None):
     # A chat reply or document is generative text with a real choice of sampling
-    # strategy behind it — unlike a tool action (open an app, set a reminder), there's
+    # strategy behind it - unlike a tool action (open an app, set a reminder), there's
     # something genuine to compare, so these two actions pause here instead of
     # auto-picking one variant, matching the Playground's "show everything, you choose"
-    # behavior rather than silently deciding for the user every time.
-    task["steps"][1].update(status="completed",detail=f"Generated {len(task['variants'])} variants."); _persist(task)
-    task["status"]="awaiting_selection"; task["message"]="Choose a response below."
+    # behavior rather than silently deciding for the user every time. task["variants"]
+    # starts empty and grows as each of the 6 strategies finishes - status flips to
+    # awaiting_selection immediately (not after all 6), so a poll shortly after start
+    # already sees a pickable task, and the frontend renders cards as they arrive
+    # rather than waiting for the slowest strategy (typically beam search's local
+    # decode loop) before showing anything at all.
+    task["variants"] = []
+    task["status"] = "awaiting_selection"
+    task["message"] = "Choose a response below (more still arriving)."
     _persist(task)
 
-async def select_variant(task_id, variant_key):
+    async def on_variant(variant):
+        if task["status"] == "completed":
+            return  # user already picked before this one finished - a harmless no-op
+        task["variants"].append(variant)
+        task["steps"][1].update(status="running", detail=f"{len(task['variants'])}/6 variants ready.")
+        _persist(task)
+
+    await stream_variants(message, history, context, is_document=is_document, fmt=fmt,
+                           instruction=instruction, on_variant=on_variant)
+    if task["status"] != "completed":
+        task["steps"][1].update(status="completed", detail=f"Generated {len(task['variants'])} variants.")
+        task["message"] = "Choose a response below."
+        _persist(task)
+
+async def select_variant(task_id, variant_key, candidate_index=None):
     task = TASKS.get(task_id)
     if not task:
         raise KeyError("Task not found.")
-    if task["status"] != "awaiting_selection":
-        raise ValueError("This task isn't waiting on a selection.")
+    if task["status"] != "awaiting_selection" or not task["variants"]:
+        raise ValueError("This task isn't waiting on a selection yet.")
     variant = next((v for v in task["variants"] if v["key"] == variant_key), None)
     if not variant:
-        raise ValueError("Unknown variant.")
+        raise ValueError("Unknown variant (it may not have finished generating yet).")
+    # beam/top-k/nucleus carry up to 5 ranked candidates - default to the top-ranked
+    # one (variant["text"]), but let the user pick any specific one of the 5 instead.
+    chosen_text = variant["text"]
+    if candidate_index is not None:
+        candidates = variant.get("candidates") or []
+        if not (0 <= candidate_index < len(candidates)):
+            raise ValueError("Unknown candidate index.")
+        chosen_text = candidates[candidate_index]["text"]
     pending = task["_pending"]
     try:
         task["steps"][2].update(status="running",detail="Finalizing your chosen response."); _persist(task)
         if pending["kind"] == "write_document":
             fmt = pending["fmt"]
-            path = await asyncio.to_thread(create_document, variant["text"], _slug(pending["title"])+"."+fmt, fmt)
+            path = await asyncio.to_thread(create_document, chosen_text, _slug(pending["title"])+"."+fmt, fmt)
             task["output_path"] = str(path)
             task["download_url"] = f"/files/{Path(path).name}"
             result = {"path": str(path), "message": "Document generated and saved. You can download it below."}
         else:
-            result = {"message": variant["text"]}
+            result = {"message": chosen_text}
         task["result"] = result
         task["chosen_variant"] = variant_key
         if task.get("output_path") and not Path(task["output_path"]).exists():
@@ -253,4 +275,5 @@ async def select_variant(task_id, variant_key):
         task["status"]="failed"; task["error"]=str(exc); task["message"]=f"Could not complete task: {exc}"
         task["steps"][2].update(status="failed",detail=str(exc))
     _persist(task)
+    return task
     return task

@@ -44,18 +44,18 @@ def _play_spotify(q: str):
         webbrowser.open("https://open.spotify.com/")
         return {"opened_url": "https://open.spotify.com/", "message": "Opened Spotify."}
     # Spotify's web player needs a signed-in session to autoplay, which isn't available
-    # headlessly here — but the spotify: URI deep-links straight into the installed
+    # headlessly here - but the spotify: URI deep-links straight into the installed
     # desktop app's search results (one click from actual playback) when it's running,
     # which is the closest thing to "just play it" without the Spotify API/OAuth.
     if platform.system() == "Windows":
         try:
             os.startfile(f"spotify:search:{urllib.parse.quote(q)}")
-            return {"message": f'Opened Spotify and searched for "{q}" — press play on the top result.'}
+            return {"message": f'Opened Spotify and searched for "{q}" - press play on the top result.'}
         except OSError:
             pass
     url = "https://open.spotify.com/search/" + urllib.parse.quote(q)
     webbrowser.open(url)
-    return {"opened_url": url, "message": f'Opened Spotify search for "{q}" — press play on the top result.'}
+    return {"opened_url": url, "message": f'Opened Spotify search for "{q}" - press play on the top result.'}
 
 def _play_youtube(q: str):
     if not q:
@@ -87,7 +87,7 @@ def _play_youtube(q: str):
         pass
     url = "https://www.youtube.com/results?search_query=" + urllib.parse.quote(q)
     webbrowser.open(url)
-    return {"opened_url": url, "message": f'Opened the search results for "{q}" — pick a track to play.'}
+    return {"opened_url": url, "message": f'Opened the search results for "{q}" - pick a track to play.'}
 
 def open_url(url: str):
     allowed = ("https://", "http://")
@@ -158,7 +158,7 @@ def _get_brightness():
     out = _run_ps_query("(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightness).CurrentBrightness")
     if not out.isdigit():
         raise RuntimeError(
-            "Couldn't read screen brightness — this only works on a built-in laptop display, "
+            "Couldn't read screen brightness - this only works on a built-in laptop display, "
             "not an external monitor."
         )
     return int(out)
@@ -170,7 +170,7 @@ def _set_brightness(level):
     )
     if out.strip() != "ok":
         raise RuntimeError(
-            "Couldn't change screen brightness — this only works on a built-in laptop display, "
+            "Couldn't change screen brightness - this only works on a built-in laptop display, "
             "not an external monitor."
         )
     return {"message": f"Brightness set to {level}%."}

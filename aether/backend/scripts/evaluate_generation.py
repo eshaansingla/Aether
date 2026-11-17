@@ -1,7 +1,7 @@
 """
 Evaluation harness for AETHER's text generation (BLEU, ROUGE, perplexity), run per
 sampling strategy so the results are a real comparison across the 6 presets the
-Playground/chat picker offers — not just a single number for "the model".
+Playground/chat picker offers - not just a single number for "the model".
 
 Run against the live backend (python -m uvicorn app.main:app ...) via /api/compare,
 which runs all 6 strategies for each prompt in one call. /api/tasks is NOT used here:
@@ -10,7 +10,7 @@ every generative action now pauses at "awaiting_selection" waiting for a human p
 unattended script.
 
 BLEU and ROUGE only make sense where there's a reference text with one broadly correct
-answer (a factual question, a summary of a given source) — they're intentionally left
+answer (a factual question, a summary of a given source) - they're intentionally left
 out of the open-ended cases below (an essay, a poem) where no single "correct" text
 exists to compare against; forcing a similarity score onto free-form creative output
 would be a meaningless number, not a real evaluation. Perplexity, which measures how
@@ -129,7 +129,7 @@ def main():
     lines += [
         "",
         "Perplexity is scored by a fixed local reference model (distilgpt2), independent of "
-        "which provider generated the text — see `app/eval/metrics.py`. BLEU/ROUGE-L are "
+        "which provider generated the text - see `app/eval/metrics.py`. BLEU/ROUGE-L are "
         "scored only against prompts that have one reasonably correct reference answer; "
         "open-ended prompts (essay, poem) are excluded from those two columns by design, "
         "not because they failed.",

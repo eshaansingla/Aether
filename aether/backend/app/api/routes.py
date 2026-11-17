@@ -1,4 +1,4 @@
-import asyncio, tempfile
+import asyncio, tempfile, uuid
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from app.models import ChatRequest, NoteCreate, NoteUpdate, ReminderCreate, ReminderUpdate, VariantSelect
@@ -12,7 +12,7 @@ from app.services.agent import agent
 from app.tools.attachments import extract_text
 from app.tools.files import read_document_text, write_document_text
 from app.tools.knowledge import looks_factual, wikipedia_summary
-from app.core.variants import generate_all_variants
+from app.core.variants import stream_variants
 from app.config import AI_MODEL, AI_PROVIDER, WHISPER_MODEL
 
 router = APIRouter(prefix="/api")
@@ -41,24 +41,50 @@ async def sampling_presets():
     # explanatory text twice (here and in the frontend).
     return agent.SAMPLING_PRESETS
 
+COMPARE_JOBS = {}
+
 @router.post("/compare")
 async def compare_sampling(request: ChatRequest):
     # A dedicated endpoint, not a `general` action in the task-routing pipeline: a user
     # reaching for this is explicitly asking to see how temperature/top-p change the
-    # output, not asking AETHER to take some action — it would be wrong to let the
+    # output, not asking AETHER to take some action; it would be wrong to let the
     # classifier ever route an ordinary message here instead of to a real action.
+    #
+    # Starts the 6 strategies as a background job instead of blocking the request: the
+    # Playground polls GET /api/compare/{job_id} the same way task polling already
+    # works elsewhere, so cards appear as each strategy finishes (fastest first)
+    # instead of the whole page waiting for the slowest one (usually beam search's
+    # local decode loop) before showing anything at all.
     message = request.message.strip()
     history = [{"role": h.role, "content": h.content} for h in request.history]
     context = None
     if looks_factual(message):
         context = await asyncio.to_thread(wikipedia_summary, message)
-    variants = await generate_all_variants(message, history, context)
-    return {"message": message, "context": context, "variants": variants}
+    job_id = str(uuid.uuid4())
+    job = {"status": "running", "message": message, "context": context, "variants": []}
+    COMPARE_JOBS[job_id] = job
+
+    async def on_variant(variant):
+        job["variants"].append(variant)
+
+    async def run():
+        await stream_variants(message, history, context, is_document=False, on_variant=on_variant)
+        job["status"] = "done"
+
+    asyncio.create_task(run())
+    return {"job_id": job_id, "message": message, "context": context, "variants": []}
+
+@router.get("/compare/{job_id}")
+async def compare_status(job_id: str):
+    job = COMPARE_JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Comparison job not found.")
+    return job
 
 @router.post("/tasks/{task_id}/select")
 async def pick_task_variant(task_id: str, body: VariantSelect):
     try:
-        return await select_variant(task_id, body.variant_key)
+        return await select_variant(task_id, body.variant_key, body.candidate_index)
     except KeyError:
         raise HTTPException(status_code=404, detail="Task not found.")
     except ValueError as exc:

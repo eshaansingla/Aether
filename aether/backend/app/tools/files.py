@@ -15,7 +15,7 @@ def safe_output_path(filename: str, extension: str) -> Path:
     if OUTPUT_DIR.resolve() not in target.parents:
         raise ValueError("Invalid output path.")
     # A model-suggested title is sometimes missing or generic (e.g. the classifier leaves
-    # "title" empty and both calls fall back to the same default) — writing straight to
+    # "title" empty and both calls fall back to the same default) - writing straight to
     # that path would silently overwrite a previous, unrelated document with no warning
     # to the user. A fresh document creation always gets its own file; only the explicit
     # edit-a-document flow (write_document_text, via _output_path, not this function)
@@ -31,7 +31,7 @@ def safe_output_path(filename: str, extension: str) -> Path:
 PLAIN_TEXT_FORMATS = {"txt", "md", "csv", "json", "py", "js", "ts", "html", "css", "java", "c", "cpp", "sh", "yaml", "xml"}
 
 # A model trained mostly on Markdown reaches for **bold**/*italic* even when asked for
-# plain prose meant for a .docx — written literally into a Word paragraph, the asterisks
+# plain prose meant for a .docx - written literally into a Word paragraph, the asterisks
 # themselves show up as visible text instead of as formatting. Rendering them as actual
 # bold/italic runs (and dropping the markers) gets what the model clearly intended
 # without the file looking broken.
@@ -99,7 +99,7 @@ def read_document_text(name: str) -> str:
     if ext == "docx":
         paragraphs = Document(path).paragraphs
         # The title heading (added by create_document/write_document_text as a level-0
-        # "Title"-styled paragraph) is shown separately as the modal's own header — if it
+        # "Title"-styled paragraph) is shown separately as the modal's own header - if it
         # weren't skipped here, editing and saving the body would duplicate it as a plain
         # line of text on every round-trip, since write_document_text always re-adds it.
         if paragraphs and paragraphs[0].style and paragraphs[0].style.name == "Title":
@@ -107,7 +107,7 @@ def read_document_text(name: str) -> str:
         return "\n\n".join(p.text for p in paragraphs)
     if ext in PLAIN_TEXT_FORMATS:
         return path.read_text(encoding="utf-8")
-    raise ValueError(f"'.{ext}' files can't be previewed in-app yet — download it instead.")
+    raise ValueError(f"'.{ext}' files can't be previewed in-app yet - download it instead.")
 
 def write_document_text(name: str, content: str):
     path = _output_path(name)
@@ -120,5 +120,5 @@ def write_document_text(name: str, content: str):
     elif ext in PLAIN_TEXT_FORMATS:
         path.write_text(content, encoding="utf-8")
     else:
-        raise ValueError(f"'.{ext}' files can't be edited in-app yet — download it instead.")
+        raise ValueError(f"'.{ext}' files can't be edited in-app yet - download it instead.")
     return {"name": path.name, "text": content}

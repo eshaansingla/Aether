@@ -5,7 +5,7 @@ TEXT_EXTENSIONS = {
     ".txt", ".md", ".csv", ".json", ".py", ".js", ".ts", ".html", ".css",
     ".java", ".c", ".cpp", ".sh", ".yaml", ".yml", ".xml", ".log",
 }
-# Capped well under the model's usable context window — a local model's context is
+# Capped well under the model's usable context window - a local model's context is
 # finite and shared with the conversation history, so an uncapped multi-page PDF would
 # silently push earlier turns (or the attachment itself) out of the window.
 MAX_CHARS = 15000

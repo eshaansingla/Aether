@@ -5,6 +5,7 @@ from app.services.agent import agent, LocalAgent
 from app.tools.productivity import create_note, create_reminder, search_files
 from app.tools.desktop import open_app, play_music, open_url, run_system_command
 from app.tools.files import create_document
+from app.tools.imaging import generate_image
 from app.tools.knowledge import looks_factual, wikipedia_summary, extract_document_topic, lookup_topic
 from app.core.database import save_task
 from app.core.variants import generate_all_variants, generate_all_document_variants
@@ -141,6 +142,15 @@ async def _run(task, history=None, attachments=None):
             prompt_text = plan.get("content") or task["instruction"]
             response_text = await browser.submit_chatgpt_prompt(prompt_text)
             result = {"message": "Got a response from ChatGPT in the visible browser.", "response": response_text}
+        elif action == "generate_image":
+            # Deterministic, not generative-text: there's no sampling strategy to
+            # compare here (this calls an image API directly, not the LLM), so it
+            # doesn't go through the variant-picker flow the way chat/write_document do.
+            if not plan.get("content"):
+                raise ValueError("Please describe the image you want.")
+            path = await asyncio.to_thread(generate_image, plan["content"])
+            task["output_path"] = str(path)
+            result = {"path": str(path), "message": "Image generated and saved. You can view it below."}
         elif action == "write_document":
             if not plan.get("content"):
                 raise ValueError("Please describe what the document should contain.")

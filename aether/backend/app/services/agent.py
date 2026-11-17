@@ -2,7 +2,7 @@ import json, re, time
 import httpx
 from app.config import AI_API_KEY, AI_BASE_URL, AI_MODEL, AI_FAST_MODEL
 
-ACTIONS = "write_document,take_note,set_reminder,open_app,play_music,search_files,open_website,system_control,ask_chatgpt,general"
+ACTIONS = "write_document,generate_image,take_note,set_reminder,open_app,play_music,search_files,open_website,system_control,ask_chatgpt,general"
 SYSTEM_COMMAND_LIST = "wifi_on,wifi_off,lock,mute,volume_up,volume_down,volume_set,brightness_up,brightness_down,brightness_set,sleep,screenshot"
 DOC_FORMAT_LIST = "docx,txt,md,csv,json,py,js,ts,html,css,java,c,cpp,sh,yaml,xml"
 
@@ -12,6 +12,7 @@ ACTION_KEYWORDS = {
     "search_files": ("find","search","locate","file","resume","document","folder","desktop","downloads"),
     "open_app": ("open","launch","start"),
     "write_document": ("write","create","draft","essay","report","letter","document","note","script","code","save"),
+    "generate_image": ("image","picture","photo","draw","drawing","illustration","generate","art"),
     "play_music": ("play","music","song","listen","spotify"),
     "take_note": ("note",),
     "set_reminder": ("remind","reminder"),
@@ -37,6 +38,11 @@ notes-to-file, code snippets/scripts, or data files. Set "content" to the user's
 instructions, verbatim) so it can be expanded into the complete file, "title" to a short filename-friendly
 name, and "format" to the best-fitting extension from: {DOC_FORMAT_LIST} (default "docx" for prose documents,
 "md" for notes/readme-style text, or the matching language extension for code).
+For generate_image, use it for ANY request to draw/generate/create a picture, image, illustration, or art.
+Set "content" to a clear, concrete visual description suitable for an image generator (expand a vague request
+like "a cat" into something like "a photo of an orange tabby cat sitting on a windowsill"); never use this for
+a request to find/open an existing image file (that's search_files/open_app) or to write text about a topic
+(that's write_document/general).
 For system_control (Wi-Fi on/off, locking the PC, muting/volume/brightness, sleep, taking a screenshot), set
 "command" to exactly one of: {SYSTEM_COMMAND_LIST}. Use the "_set" variant with an exact percentage when one is
 given (e.g. "set volume to 30%"), otherwise the "_up"/"_down" variant for a relative change.
@@ -547,6 +553,9 @@ class LocalAgent:
         if re.search(r"\b(play|listen to)\b", low):
             q = re.sub(r"(?i)\b(play|listen to|some|song|music)\b", "", s).strip()
             return {"action":"play_music","query":q}
+        m = re.search(r"(?i)^(?:generate|draw|create|make)\s+(?:an?|some)\s+(?:image|picture|photo|drawing|illustration)\s+(?:of|showing)?\s*(.+)", s)
+        if m:
+            return {"action":"generate_image","content":m.group(1).strip(" .!")}
         if re.search(r"\b(take a note|note this|write this down|remember this note)\b", low):
             content = re.sub(r"(?i)^(take a note|note this|write this down|remember this note)[: ,]*", "", s)
             return {"action":"take_note","title":"Quick note","content":content}

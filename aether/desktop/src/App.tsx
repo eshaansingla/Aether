@@ -4,7 +4,7 @@ import {
   CircleHelp, Clock3, Command, FileText, FolderSearch,  Mic,
   Moon, Music2, NotebookPen, Plus, Search, Settings2, ShieldCheck,
   Sun, Volume2, X, PanelLeftClose, PanelLeftOpen, Cpu, Paperclip,
-  Square, LoaderCircle, Trash2, Save, FlaskConical, Copy
+  Square, LoaderCircle, Trash2, Save, FlaskConical, Copy, Image as ImageIcon
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -33,6 +33,7 @@ const starterPrompts = [
   {icon:NotebookPen,title:"Take a note",prompt:"Take a note: Ideas for my next project"},
   {icon:Clock3,title:"Set a reminder",prompt:"Remind me to take a break in 25 minutes"},
   {icon:FolderSearch,title:"Find a file",prompt:"Find my resume"},
+  {icon:ImageIcon,title:"Generate an image",prompt:"Generate an image of a cozy mountain cabin at sunset"},
 ];
 
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36)}
@@ -481,7 +482,12 @@ export default function App(){
                   {m.task&&m.task.status!=="awaiting_selection"&&<div className="task-inline">
                     <div className="task-inline-head"><span className={`task-state ${m.task.status}`}>{m.task.status==="completed"?<CheckCircle2 size={14}/>:m.task.status==="failed"?<CircleHelp size={14}/>:<LoaderCircle size={14} className="spin"/>}{m.task.status}</span><span>{m.task.steps.filter(s=>s.status==="completed").length}/{m.task.steps.length} steps</span></div>
                     {m.task.steps.map((s,i)=><div className="task-mini-step" key={i}><span className={s.status==="completed"?"step-done":s.status==="failed"?"step-fail":"step-pending"}>{s.status==="completed"?<Check size={12}/>:s.status==="failed"?<X size={12}/>:<Circle size={10}/>}</span><span>{s.name}</span><small>{s.status}</small></div>)}
-                    {m.task.output_path&&(m.task.download_url?<div className="task-file-row">
+                    {m.task.output_path&&/\.(png|jpe?g|gif|webp)$/i.test(m.task.output_path)&&m.task.download_url
+                      ?<div className="task-image-row">
+                        <img className="task-image" src={`${API}${m.task.download_url}`} alt={m.task.instruction}/>
+                        <button className="task-file-dl" onClick={()=>downloadFile(`${API}${m.task!.download_url}`,m.task!.output_path!.split(/[\\/]/).pop()||"image")} title="Download"><ArrowDown size={14}/></button>
+                      </div>
+                      :m.task.output_path&&(m.task.download_url?<div className="task-file-row">
                       <button className="task-file" onClick={()=>openDocument(m.task!.output_path!)} title="Open in AETHER"><FileText size={15}/><span>{m.task.output_path}</span></button>
                       <button className="task-file-dl" onClick={()=>downloadFile(`${API}${m.task!.download_url}`,m.task!.output_path!.split(/[\\/]/).pop()||"download")} title="Download"><ArrowDown size={14}/></button>
                     </div>:<div className="task-file"><FileText size={15}/><span>{m.task.output_path}</span></div>)}

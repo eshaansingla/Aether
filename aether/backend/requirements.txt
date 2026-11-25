@@ -13,12 +13,12 @@ pypdf>=5.0.0
 pycaw>=20240210; sys_platform == 'win32'
 comtypes>=1.4.0; sys_platform == 'win32'
 
-# Evaluation harness only (scripts/evaluate_generation.py) - not imported by the running
-# app, so these don't add startup cost to the assistant itself.
+# Text-generation metrics + the local distilgpt2 model (top-k/beam strategies,
+# perplexity scoring). transformers is loaded lazily, on the first chat reply.
 sacrebleu>=2.4.0
 rouge-score>=0.1.2
 transformers>=4.40.0
-# torch is deliberately NOT listed here: its CPU-only wheel lives on a separate PyPI
-# index that requirements.txt can't express per-platform. Install it once with:
+# torch is also required but not listed: its CPU-only wheel lives on a separate index
+# that requirements.txt can't express per-platform. windows/SETUP_AND_RUN.ps1 installs
+# it automatically; manually:
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
-# before running scripts/evaluate_generation.py. See backend/MODEL_SETUP.md.

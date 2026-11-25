@@ -1,5 +1,4 @@
 import asyncio
-from pathlib import Path
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 from app.config import BROWSER_PROFILE
 

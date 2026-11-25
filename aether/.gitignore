@@ -9,3 +9,8 @@ release/
 output/*
 !output/.gitkeep
 .DS_Store
+
+# Runtime/user data - recreated automatically on first run
+backend/aether.db
+backend/data/
+*.tsbuildinfo

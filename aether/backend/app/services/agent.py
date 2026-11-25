@@ -1,6 +1,6 @@
 import json, re, time
 import httpx
-from app.config import AI_API_KEY, AI_BASE_URL, AI_MODEL, AI_FAST_MODEL
+from app.config import AI_API_KEY, AI_KEY_ENV, AI_BASE_URL, AI_MODEL, AI_FAST_MODEL
 
 ACTIONS = "write_document,generate_image,take_note,set_reminder,open_app,play_music,search_files,open_website,system_control,ask_chatgpt,general"
 SYSTEM_COMMAND_LIST = "wifi_on,wifi_off,lock,mute,volume_up,volume_down,volume_set,brightness_up,brightness_down,brightness_set,sleep,screenshot"
@@ -134,7 +134,7 @@ class LocalAgent:
 
     def _complete(self, model, messages, temperature, max_tokens=None, json_mode=False, top_p=None, timeout=60):
         if not self.api_key:
-            raise RuntimeError("OPENAI_API_KEY is not configured.")
+            raise RuntimeError(f"{AI_KEY_ENV} is not configured.")
         payload = {"model": model, "messages": messages, "temperature": temperature}
         if max_tokens:
             payload["max_tokens"] = max_tokens
@@ -309,7 +309,7 @@ class LocalAgent:
                     return "I don't have reliable information to answer that."
             return text
         except Exception:
-            return ("The AI API is not reachable right now. Check that OPENAI_API_KEY is set "
+            return (f"The AI API is not reachable right now. Check that {AI_KEY_ENV} is set "
                      "correctly in the backend's .env file and that you have network access, "
                      "then try again.")
 
@@ -603,6 +603,6 @@ class LocalAgent:
         if re.search(r"(?i)\b(write|create|draft)\b", s) and re.search(r"(?i)\b(document|essay|report|letter|word file)\b", s):
             return {"action":"write_document","title":"AETHER document","content":s,"format":"docx"}
         return {"action":"general","response":
-            "The AI API isn't reachable right now - check that OPENAI_API_KEY is set in the backend's .env file, or try a supported command such as 'Take a note: …'."}
+            f"The AI API isn't reachable right now - check that {AI_KEY_ENV} is set in the backend's .env file, or try a supported command such as 'Take a note: …'."}
 
 agent = LocalAgent()

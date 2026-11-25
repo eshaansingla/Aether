@@ -41,7 +41,8 @@ _PROVIDERS = {
 }
 AI_PROVIDER = os.getenv("AETHER_PROVIDER", "groq").strip().lower()
 _provider_cfg = _PROVIDERS.get(AI_PROVIDER, _PROVIDERS["groq"])
-AI_API_KEY = os.getenv(_provider_cfg["key_env"], "")
+AI_KEY_ENV = _provider_cfg["key_env"]
+AI_API_KEY = os.getenv(AI_KEY_ENV, "")
 AI_BASE_URL = os.getenv("AETHER_API_BASE_URL", _provider_cfg["base_url"]).rstrip("/")
 AI_MODEL = os.getenv("AETHER_MODEL", _provider_cfg["default_model"])
 AI_FAST_MODEL = os.getenv("AETHER_FAST_MODEL", AI_MODEL)

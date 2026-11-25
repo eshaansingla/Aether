@@ -93,7 +93,7 @@ sequenceDiagram
     end
 ```
 
-Full component/sequence/state diagrams: [`aether/docs/ARCHITECTURE.md`](aether/docs/ARCHITECTURE.md).
+Full architecture write-up: [`docs/Report_05.pdf`](docs/Report_05.pdf).
 
 ## Features in this prototype
 - ChatGPT-inspired Electron + React desktop chat UI, with Markdown rendering (tables,
@@ -143,7 +143,7 @@ Full component/sequence/state diagrams: [`aether/docs/ARCHITECTURE.md`](aether/d
   of them)
 
 ## AI concepts
-See [`aether/docs/PROJECT_REPORT.md`](aether/docs/PROJECT_REPORT.md) for the full
+See the project report [`docs/Report_05.pdf`](docs/Report_05.pdf) for the full
 writeup. In short: AETHER uses pretrained Transformer-family LLMs (served by
 OpenAI/Groq/Gemini) as a black box for text generation - this project does not
 pretrain, fine-tune, or implement attention/MHA from scratch. What it demonstrates
@@ -263,7 +263,7 @@ And greedy/low-temperature's perplexity is actually *higher* than high-temperatu
 here, because the reference scorer finds confidently-stated specific facts more
 "surprising" than high-temperature's vaguer phrasing - a reminder that perplexity alone
 never substitutes for the grounding check on either end of the temperature range. Full
-discussion: [`aether/docs/PROJECT_REPORT.md`](aether/docs/PROJECT_REPORT.md#results-and-analysis).
+discussion: [`docs/Report_05.pdf`](docs/Report_05.pdf).
 
 ### Alignment with Quiz-1 syllabus
 Honest mapping of what's actually implemented against the course's Quiz-1 topics - 
@@ -275,13 +275,13 @@ not cover:
 | GenAI meaning, capabilities, applications | Yes - AETHER *is* an applied GenAI system: text generation for essays/reports/letters/code, conversational Q&A, and an agent that decides which tool a request needs. | `app/services/agent.py`, `app/core/runner.py` |
 | Tools for text/code generation | Yes, directly. | `write_document` action, multiple file formats |
 | Tools for image/video/audio *generation* | No - attempted and dropped. Image generation was built but every image-capable model on OpenAI/Groq/Gemini returned $0 credits or a `0` free-tier quota; no provider in use offers free audio/video generation. Speech is input (STT) and output (OS TTS) only, not generated audio content. | - |
-| Intro to LLMs, history/evolution | Not implemented in code - narrative only, in `docs/PROJECT_REPORT.md`. | `aether/docs/PROJECT_REPORT.md` |
+| Intro to LLMs, history/evolution | Not implemented in code - narrative only, in the project report. | `docs/Report_05.pdf` |
 | Transformer architecture (attention, pre-training, fine-tuning, MLM/NSP) | Not implemented - these models are pretrained by the API provider; AETHER never trains, fine-tunes, or touches model internals. | - |
 | Data preprocessing, training strategies, fine-tuning on custom data | Not applicable - no training happens in this project. | - |
 | Text generation techniques | Yes. | `agent.generate_text`, `agent.chat`, `agent.generate_variant_any` |
 | **Conditional text generation** | Yes, throughout: every generation call conditions the model on a system prompt plus the user's instruction, and optionally on retrieved/attached source material (grounding context), not just a bare prompt. | `generate_text(instruction, context=...)`, `chat(message, context=...)` |
 | **Sampling strategies (greedy / random / temperature / nucleus / top-k / beam)** | Yes - **all 6**, run side by side with a human pick, not just set internally and hidden. Greedy, low-temperature, nucleus (top-p), and high-temperature via the live cloud API. Top-k and beam search via a real local decode loop (Hugging Face Transformers' `generate()` on `distilgpt2`), since hosted chat-completions APIs reject both - confirmed directly against Groq: `top_k` → `400 unsupported property`; `n>1` (which beam search needs) → `400 must be at most 1`. | `agent.py` `SAMPLING_PRESETS` / `generate_variant_any` / `generate_document_variant`, `POST /api/compare`, `POST /api/tasks/{id}/select`, desktop Playground + inline chat picker |
-| **Evaluation metrics for text generation (perplexity, BLEU, ROUGE)** | Yes, in two places: live per-response (every variant card shows perplexity + a grounding check + BLEU/ROUGE-vs-source when context exists), and offline as a real aggregate comparison across all 6 strategies over 9 prompts (see `docs/PROJECT_REPORT.md`'s Results section). Perplexity can't come from the live provider's own logprobs (Groq rejects the `logprobs` param outright - a hosted-API limitation, not a code gap), so it's scored by a fixed local reference model (`distilgpt2`) instead - the standard NLG-literature workaround. BLEU/ROUGE are never forced onto open-ended creative prompts that have no single correct reference. | `app/eval/metrics.py`, `app/core/variants.py`, `scripts/evaluate_generation.py`, `eval_results/` |
+| **Evaluation metrics for text generation (perplexity, BLEU, ROUGE)** | Yes, in two places: live per-response (every variant card shows perplexity + a grounding check + BLEU/ROUGE-vs-source when context exists), and offline as a real aggregate comparison across all 6 strategies over 9 prompts (see the project report's results section). Perplexity can't come from the live provider's own logprobs (Groq rejects the `logprobs` param outright - a hosted-API limitation, not a code gap), so it's scored by a fixed local reference model (`distilgpt2`) instead - the standard NLG-literature workaround. BLEU/ROUGE are never forced onto open-ended creative prompts that have no single correct reference. | `app/eval/metrics.py`, `app/core/variants.py`, `scripts/evaluate_generation.py`, `eval_results/` |
 
 ## Limitations
 This is a prototype, not a finished commercial-grade JARVIS. It currently routes one
@@ -309,11 +309,8 @@ replies are grounded and cross-checked where possible, but no LLM-backed system 
 immune to occasional mistakes.
 
 ## Academic presentation
-- Project report: [`aether/docs/PROJECT_REPORT.md`](aether/docs/PROJECT_REPORT.md)
-  (also `aether/docs/AETHER_Project_Report.pdf`/`.docx`, predates this round of work)
-- Architecture + diagrams: [`aether/docs/ARCHITECTURE.md`](aether/docs/ARCHITECTURE.md)
-- Test plan: [`aether/docs/TEST_CASES.md`](aether/docs/TEST_CASES.md)
-- Demo script: [`aether/docs/DEMO_SCRIPT.md`](aether/docs/DEMO_SCRIPT.md)
+- Project report: [`docs/Report_05.pdf`](docs/Report_05.pdf)
+- Presentation slides: [`docs/PPT_05.pdf`](docs/PPT_05.pdf)
 - AI model/provider setup: [`aether/backend/MODEL_SETUP.md`](aether/backend/MODEL_SETUP.md)
 - Evaluation results: [`aether/backend/eval_results/latest_summary.md`](aether/backend/eval_results/latest_summary.md)
 

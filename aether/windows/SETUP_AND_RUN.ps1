@@ -59,6 +59,10 @@ if (-not (Test-Path ".venv\Scripts\python.exe")) {
 if ($LASTEXITCODE -ne 0) { throw "Could not upgrade pip." }
 & ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) { throw "Python dependency installation failed." }
+# torch (CPU build) powers the local top-k/beam strategies and perplexity scoring. Its
+# CPU wheel lives on a separate index, so it cannot go in requirements.txt.
+& ".venv\Scripts\python.exe" -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+if ($LASTEXITCODE -ne 0) { throw "PyTorch installation failed." }
 $envFileCreated = $false
 if (-not (Test-Path ".env")) { Copy-Item ".env.example" ".env"; $envFileCreated = $true }
 & ".venv\Scripts\python.exe" -m playwright install chromium

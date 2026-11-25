@@ -1,5 +1,4 @@
 import os, subprocess, webbrowser, urllib.parse, platform
-from pathlib import Path
 
 # Deliberately allowlisted. Never pass an LLM-provided shell command to the OS.
 APP_ALIASES = {

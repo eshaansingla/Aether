@@ -76,7 +76,7 @@ PYTHONPATH=. python scripts/evaluate_generation.py
 Each run is saved as `eval_results/run_<timestamp>.json` (kept, not overwritten, so runs
 stay comparable over time) and refreshes `eval_results/latest_summary.md` with a
 per-strategy aggregate table - mean perplexity/BLEU/ROUGE-L across every test prompt,
-grouped by sampling strategy, ready to paste into `docs/PROJECT_REPORT.md`.
+grouped by sampling strategy, ready to paste into the project report.
 
 Perplexity can't be computed from the live provider's own output probabilities - Groq's
 API rejects the `logprobs` parameter outright (`400: logprobs is not supported with this

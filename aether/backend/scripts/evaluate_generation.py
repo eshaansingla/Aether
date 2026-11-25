@@ -20,7 +20,7 @@ close it is to some other text, is computed for every case instead.
 Usage: python scripts/evaluate_generation.py
 Writes a timestamped run to eval_results/run_<timestamp>.json (so past runs are kept,
 not overwritten) and refreshes eval_results/latest_summary.md with the aggregated
-per-strategy table, ready to paste into docs/PROJECT_REPORT.md.
+per-strategy table, ready to paste into the project report.
 """
 import json
 import statistics

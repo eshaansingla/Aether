@@ -97,6 +97,10 @@ def main():
         full_results.append(case_result)
         print(flush=True)
 
+    if not per_strategy:
+        # Every /api/compare call failed (backend down, bad key, rate limit) - refuse to
+        # overwrite latest_summary.md with an empty table.
+        raise SystemExit("No variants were generated - is the backend running with a valid API key? Nothing saved.")
     RESULTS_DIR.mkdir(exist_ok=True)
     with open(RESULTS_DIR / f"run_{run_id}.json", "w", encoding="utf-8") as f:
         json.dump(full_results, f, indent=2)

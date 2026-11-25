@@ -15,6 +15,32 @@ no credit card and is the default.
 
 The project lives under [`aether/`](aether/); this README covers the whole repo.
 
+## Quick start - run this on a fresh Windows PC
+
+No Python, Node.js, or anything else needs to be installed beforehand - the setup
+script installs every prerequisite itself. This works from a brand-new copy of this
+repo (clone or ZIP download) on any Windows 10/11 machine.
+
+1. **Get a free AI API key** - Groq (no credit card required): https://console.groq.com/keys
+   (sign up, then "Create API Key").
+2. **Double-click [`aether/SETUP_AND_RUN.bat`](aether/SETUP_AND_RUN.bat).**
+   It automatically installs Python 3.11 and Node.js LTS if they're missing (via
+   winget), creates the Python virtual environment, installs every Python and Node
+   dependency, and creates `aether/backend/.env` from the template. Accept any
+   Windows/winget install prompts that appear. This step needs an internet connection
+   and can take a few minutes the first time.
+3. **Add your API key.** Open `aether/backend/.env` in Notepad, set `AETHER_PROVIDER`
+   (leave as `groq` to match step 1) and paste your key into `GROQ_API_KEY=`, then save.
+4. **Rerun [`aether/SETUP_AND_RUN.bat`](aether/SETUP_AND_RUN.bat)** (or double-click
+   [`aether/START_AETHER.bat`](aether/START_AETHER.bat)). Two terminal windows open
+   (backend + desktop) and the AETHER window launches a few seconds later.
+5. **For every later run**, just double-click `aether/START_AETHER.bat` - keep both
+   terminal windows open while using the app; closing them stops AETHER.
+
+Full plain-text version of these same steps: [`aether/windows/README_FIRST_RUN.txt`](aether/windows/README_FIRST_RUN.txt).
+Troubleshooting, provider details (OpenAI/Groq/Gemini), and every `.env` setting:
+[`aether/backend/MODEL_SETUP.md`](aether/backend/MODEL_SETUP.md).
+
 ## How it works
 
 ```mermaid
@@ -104,27 +130,6 @@ Full component/sequence/state diagrams: [`aether/docs/ARCHITECTURE.md`](aether/d
 - DOCX/TXT/code-file document creation.
 - Local speech-to-text using faster-whisper; read-aloud using the OS's speech synthesis.
 - Settings page showing live AI API connection status.
-
-## One-click setup (Windows 10/11)
-
-1. Get a free API key - Groq (no card needed): https://console.groq.com/keys.
-2. Double-click `aether/SETUP_AND_RUN.bat`. It installs missing Python 3.11/Node.js LTS
-   (via winget), creates the Python environment, installs all project dependencies,
-   and creates `aether/backend/.env` from `.env.example` if it doesn't exist yet.
-3. Open `aether/backend/.env`, set `AETHER_PROVIDER` (default `groq`) and paste your key
-   into the matching `*_API_KEY` line, then rerun `SETUP_AND_RUN.bat` (or
-   `aether/START_AETHER.bat`).
-4. For later launches, double-click `aether/START_AETHER.bat`.
-5. (Optional, for the evaluation harness only) `pip install torch --index-url
-   https://download.pytorch.org/whl/cpu` inside `aether/backend/.venv`.
-
-Internet access is required every time AETHER generates text (it calls the configured
-cloud API) - this is different from earlier prototypes of this project, which ran a
-local Ollama model entirely offline. See `aether/backend/MODEL_SETUP.md` for provider
-details and `aether/backend/.env.example` for every setting.
-
-The setup scripts are in `aether/windows/`. The backend and desktop commands are
-prewritten; you do not need to type them manually.
 
 ## Example commands
 - `Play some relaxing music`
